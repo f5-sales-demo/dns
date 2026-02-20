@@ -1,7 +1,7 @@
 # DNS
 
 [![GitHub Pages Deploy](https://github.com/f5xc-salesdemos/dns/actions/workflows/github-pages-deploy.yml/badge.svg)](https://github.com/f5xc-salesdemos/dns/actions/workflows/github-pages-deploy.yml)
-[![Repo Settings](https://github.com/f5xc-salesdemos/dns/actions/workflows/enforce-repo-settings.yml/badge.svg)](https://github.com/f5xc-salesdemos/dns/actions/workflows/enforce-repo-settings.yml)
+[![Repository Settings](https://github.com/f5xc-salesdemos/dns/actions/workflows/enforce-repo-settings.yml/badge.svg)](https://github.com/f5xc-salesdemos/dns/actions/workflows/enforce-repo-settings.yml)
 [![License](https://img.shields.io/github/license/f5xc-salesdemos/dns)](LICENSE)
 
 F5 XC DNS management
