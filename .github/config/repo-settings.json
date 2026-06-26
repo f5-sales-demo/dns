@@ -1,7 +1,7 @@
 {
   "repository": {
     "description": "F5 XC DNS management",
-    "homepage": "https://f5xc-salesdemos.github.io/dns/"
+    "homepage": "https://f5-sales-demo.github.io/dns/"
   },
   "topics": ["f5xc"]
 }
