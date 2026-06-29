@@ -1,0 +1,91 @@
+{
+  "kind": "dns_zone",
+  "metadata": {
+    "name": "f5-sales-demo.com",
+    "namespace": "system",
+    "description": "Primary DNS zone for f5-sales-demo.com demo domain"
+  },
+  "spec": {
+    "primary": {
+      "default_soa_parameters": {},
+      "dnssec_mode": {
+        "disable": {}
+      },
+      "allow_http_lb_managed_records": true,
+      "rr_set_group": [
+        {
+          "metadata": {
+            "name": "demo-records",
+            "description": "Demo DNS records for f5-sales-demo.com"
+          },
+          "rr_set": [
+            {
+              "ttl": 300,
+              "a_record": {
+                "name": "www",
+                "values": ["203.0.113.10"]
+              },
+              "description": "Web server"
+            },
+            {
+              "ttl": 300,
+              "a_record": {
+                "name": "app",
+                "values": ["203.0.113.20"]
+              },
+              "description": "Application server"
+            },
+            {
+              "ttl": 300,
+              "a_record": {
+                "name": "api",
+                "values": ["203.0.113.30"]
+              },
+              "description": "API endpoint"
+            },
+            {
+              "ttl": 3600,
+              "cname_record": {
+                "name": "cdn",
+                "value": "cdn.f5-sales-demo.com.cdn.cloudflare.net"
+              },
+              "description": "CDN alias"
+            },
+            {
+              "ttl": 3600,
+              "mx_record": {
+                "name": "",
+                "values": ["10 mail.f5-sales-demo.com", "20 mail2.f5-sales-demo.com"]
+              },
+              "description": "Mail exchange records"
+            },
+            {
+              "ttl": 3600,
+              "txt_record": {
+                "name": "",
+                "values": ["v=spf1 include:_spf.f5.com ~all"]
+              },
+              "description": "SPF record for email authentication"
+            },
+            {
+              "ttl": 300,
+              "txt_record": {
+                "name": "_dmarc",
+                "values": ["v=DMARC1; p=reject; rua=mailto:dmarc@f5-sales-demo.com"]
+              },
+              "description": "DMARC policy"
+            },
+            {
+              "ttl": 300,
+              "aaaa_record": {
+                "name": "www",
+                "values": ["2001:db8::10"]
+              },
+              "description": "IPv6 web server"
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

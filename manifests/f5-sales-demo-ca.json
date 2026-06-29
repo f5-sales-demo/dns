@@ -1,0 +1,75 @@
+{
+  "kind": "dns_zone",
+  "metadata": {
+    "name": "f5-sales-demo.ca",
+    "namespace": "system",
+    "description": "Primary DNS zone for f5-sales-demo.ca demo domain"
+  },
+  "spec": {
+    "primary": {
+      "default_soa_parameters": {},
+      "dnssec_mode": {
+        "disable": {}
+      },
+      "allow_http_lb_managed_records": true,
+      "rr_set_group": [
+        {
+          "metadata": {
+            "name": "demo-records",
+            "description": "Demo DNS records for f5-sales-demo.ca"
+          },
+          "rr_set": [
+            {
+              "ttl": 300,
+              "a_record": {
+                "name": "www",
+                "values": ["203.0.113.50"]
+              },
+              "description": "Web server"
+            },
+            {
+              "ttl": 300,
+              "a_record": {
+                "name": "app",
+                "values": ["203.0.113.60"]
+              },
+              "description": "Application server"
+            },
+            {
+              "ttl": 3600,
+              "cname_record": {
+                "name": "api",
+                "value": "api.f5-sales-demo.com"
+              },
+              "description": "API alias to .com domain"
+            },
+            {
+              "ttl": 3600,
+              "mx_record": {
+                "name": "",
+                "values": ["10 mail.f5-sales-demo.ca"]
+              },
+              "description": "Mail exchange record"
+            },
+            {
+              "ttl": 3600,
+              "txt_record": {
+                "name": "",
+                "values": ["v=spf1 include:_spf.f5.com ~all"]
+              },
+              "description": "SPF record for email authentication"
+            },
+            {
+              "ttl": 300,
+              "aaaa_record": {
+                "name": "www",
+                "values": ["2001:db8::50"]
+              },
+              "description": "IPv6 web server"
+            }
+          ]
+        }
+      ]
+    }
+  }
+}
