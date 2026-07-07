@@ -1,0 +1,44 @@
+---
+title: 第三階段 — 容錯移轉
+description: >-
+  在 F5 Distributed Cloud 上使用 DNS 負載平衡器進行健康檢查 DNS 容錯移轉 — 計劃中的設計，待 dns-lb
+  Terraform 模組完成後實施。
+sidebar:
+  order: 4
+  label: 第三階段 — 容錯移轉
+i18n:
+  sourceHash: fb9b9857341b
+  translator: machine
+---
+
+import { Aside } from "@astrojs/starlight/components";
+
+第三階段在 [第一階段](/dns/demo/phase-1-build/) 的區域基礎上新增**健康檢查容錯移轉**功能：F5 XC **DNS 負載平衡器**會根據資源池的健康狀態，對同一名稱回傳不同的解析結果，使流量自動切換至健康的資源池。
+
+<Aside type="caution" title="待 dns-lb 模組完成">
+此階段目前尚無法執行。它依賴於 `dns-lb` Terraform 模組，該模組是目前計劃的後續工作，目前因 `lb_record` 連線格式尚未確定而處於阻塞狀態。本頁面記錄了預期的設計，以確保整體架構的完整性；可執行的步驟將隨模組一同發布。
+</Aside>
+
+## 計劃設計
+
+DNS 負載平衡器堆疊由三個 F5 XC 資源加上區域中的一筆記錄組成：
+
+| 資源 | 角色 |
+| --- | --- |
+| `xcsh_dns_lb_health_check` | 探測每個成員（HTTP、HTTPS、TCP、ICMP 或 UDP）以判斷資源池的健康狀態 |
+| `xcsh_dns_lb_pool` | 一組成員，具有負載平衡模式（`ROUND_ROBIN`、`PRIORITY` 等）及健康檢查的參照 |
+| `xcsh_dns_load_balancer` | 依請求選擇資源池的規則，並設有備援資源池 |
+| `lb_record`（位於 `xcsh_dns_zone` 中） | 將區域中的名稱繫結至 DNS 負載平衡器 |
+
+`dns-lb` 模組將實現上述資源，區域模組也將新增指向負載平衡器的 `lb_record` 項目，因此只需執行一次 `terraform apply` 即可建立完整的容錯移轉路徑。
+
+## 計劃演示
+
+模組發布後，容錯移轉演示將執行以下步驟：
+
+1. 在 DNS 負載平衡器後方部署兩個資源池（主要與次要），並配置健康檢查。
+2. 解析負載平衡名稱，確認其回傳主要資源池的解析結果。
+3. 使主要資源池進入不健康狀態，確認解析結果容錯移轉至次要資源池 — 就緒閘道會持續輪詢 `dig` 直至解析結果變更。
+4. 還原主要資源池，確認容錯回復正常運作。
+
+在此之前，請繼續前往 [第四階段 — 拆除](/dns/demo/phase-4-teardown/) 以移除第一階段的區域。

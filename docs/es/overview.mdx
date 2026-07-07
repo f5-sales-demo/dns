@@ -1,0 +1,49 @@
+---
+title: Descripción general
+description: >-
+  Cómo se construye el caso de uso de DNS de F5 Distributed Cloud — un plan de
+  Terraform con el proveedor xcsh que gestiona una zona DNS delegada, con estado
+  en Azure Blob Storage y CI en GitHub Actions.
+sidebar:
+  order: 1
+  label: Descripción general
+i18n:
+  sourceHash: 353ce3cf521f
+  translator: machine
+---
+
+import { Aside } from "@astrojs/starlight/components";
+
+Este caso de uso gestiona **DNS autoritativo en F5 Distributed Cloud** con Terraform. Un plan
+pequeño y reutilizable crea una zona DNS primaria y sus registros para un dominio delegado, mantiene
+su estado en **Azure Blob Storage**, y ejecuta plan-on-pull-request / apply-on-merge a través de
+**GitHub Actions**.
+
+## Qué gestiona
+
+- Un `xcsh_dns_zone` — una zona **primaria** autoritativa en el namespace `system` de F5 XC, con
+  registros A. El nombre de la zona es el dominio delegado (una variable), por lo que redirigir el
+  destino es un cambio de configuración, no un cambio de código.
+- Estado remoto de Terraform en Azure, para que las ejecuciones sean compartibles entre la máquina
+  de un operador y CI.
+
+## Arquitectura
+
+| Capa | Elección | Por qué |
+| --- | --- | --- |
+| Proveedor | `f5-sales-demo/xcsh` (registro de Terraform) | Generado a partir del OpenAPI de F5 XC; gestiona `xcsh_dns_zone` y los recursos del balanceador de carga DNS. Se autentica con un token de API (`Authorization: APIToken <token>`). |
+| Backend de estado | `azurerm` (Azure Blob Storage), autenticación por clave de acceso | Estado duradero y compartido. Se utiliza autenticación por clave de acceso porque la suscripción otorga únicamente el rol Contributor, que no puede asignar el rol *Storage Blob Data Contributor* que requiere la autenticación sin clave (OIDC / Azure AD). |
+| Automatización | GitHub Actions | Plan en cada pull request, apply al hacer merge a `main`. Las coordenadas del backend y las entradas provienen de **variables** del repositorio; las credenciales de **secrets**. |
+
+<Aside type="note">
+Todos los objetos DNS de F5 XC deben residir en el namespace `system` — la API rechaza otros
+namespaces. El plan impone esto mediante una regla de validación de variables.
+</Aside>
+
+## Por dónde empezar
+
+El arco de [Demo](/dns/demo/) recorre el ciclo de vida completo de extremo a extremo: **Build** la
+zona con Terraform, **Validate** que resuelve correctamente, **Failover** con un balanceador de
+carga DNS, y **Teardown**. Comience con [Fase 1 — Build](/dns/demo/phase-1-build/), que es una guía
+completa para desplegar la zona, incluyendo cada archivo de Terraform, el flujo de trabajo de CI, y
+las variables y secrets requeridos.

@@ -1,0 +1,75 @@
+---
+title: Fase 2 — Validazione
+description: >-
+  Confermare che la zona DNS di F5 Distributed Cloud si risolve sulla rete
+  internet pubblica, che il set di record F5 XC corrisponde e che il piano
+  Terraform è idempotente.
+sidebar:
+  order: 3
+  label: Fase 2 — Validazione
+i18n:
+  sourceHash: 57c1c28019b0
+  translator: machine
+---
+
+import { Steps, Aside } from "@astrojs/starlight/components";
+
+La Fase 2 conferma che la zona creata nella [Fase 1](/dns/demo/phase-1-build/) è attiva: i record si risolvono pubblicamente,
+la configurazione F5 XC corrisponde a quanto dichiarato da Terraform e una nuova pianificazione non riporta alcuna deriva.
+
+## Verifica di preparazione
+
+Interrogare la zona tramite l'API F5 XC e confermare l'esistenza del set di record atteso. Compilare i
+segnaposto dal modulo in cima alla pagina, da un file `.env` o dalla shell.
+
+```bash
+curl -s \
+  -H "Authorization: APIToken xF5XC_API_TOKENx" \
+  "xF5XC_API_URLx/api/config/dns/namespaces/system/dns_zones/xF5XC_DOMAINx" \
+  | jq '{
+    zone: .metadata.name,
+    group: .spec.primary.rr_set_group[0].metadata.name,
+    records: [.spec.primary.rr_set_group[0].rr_set[] | .a_record.name],
+    status: (if (.metadata.name != null) then "PASS" else "FAIL" end)
+  }'
+```
+
+Un risultato `PASS` con il gruppo `demo-records` e i nomi `www` / `app` / `api` conferma la configurazione lato F5 XC.
+
+## Risoluzione pubblica
+
+Il dominio è delegato a F5 XC, quindi i record si risolvono sulla rete internet pubblica. Verificare ciascun nome:
+
+```bash
+for name in www app api; do
+  echo "$name.xF5XC_DOMAINx -> $(dig +short "$name.xF5XC_DOMAINx" A | tr '\n' ' ')"
+done
+```
+
+<Aside type="note">
+Se gli indirizzi di documentazione RFC 5737 predefiniti (`203.0.113.x`) sono ancora attivi, la risoluzione
+restituisce tali indirizzi anche se non vi è alcun servizio ospitato — questo è il comportamento atteso per una
+demo di documentazione. Sostituirli con destinazioni reali per servire traffico effettivo.
+</Aside>
+
+## Idempotenza
+
+Una seconda pianificazione sulla configurazione invariata non deve riportare alcuna modifica:
+
+<Steps>
+
+1. Eseguire nuovamente la pianificazione:
+
+   ```sh
+   cd terraform
+   terraform plan
+   ```
+
+2. Confermare che l'output sia **`No changes. Your infrastructure matches the configuration.`**
+
+</Steps>
+
+In CI, la stessa garanzia vale: la riapertura di una pull request che non modifica `terraform/` produce
+un piano vuoto.
+
+Continuare con la [Fase 3 — Failover](/dns/demo/phase-3-failover/).

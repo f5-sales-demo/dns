@@ -1,0 +1,44 @@
+---
+title: 第三阶段 — 故障转移
+description: >-
+  在 F5 Distributed Cloud 上使用 DNS 负载均衡器实现健康检查 DNS 故障转移——计划设计，待 dns-lb Terraform
+  模块就绪。
+sidebar:
+  order: 4
+  label: 第三阶段 — 故障转移
+i18n:
+  sourceHash: fb9b9857341b
+  translator: machine
+---
+
+import { Aside } from "@astrojs/starlight/components";
+
+第三阶段在[第一阶段](/dns/demo/phase-1-build/)的区域基础上添加**健康检查故障转移**：F5 XC **DNS 负载均衡器**根据池的健康状态为名称返回不同的应答，从而将流量自动切换至健康的池。
+
+<Aside type="caution" title="待 dns-lb 模块就绪">
+本阶段暂不可执行。它依赖于 `dns-lb` Terraform 模块，该模块是当前计划的后续工作，目前因需要确定 `lb_record` 的连接格式而处于阻塞状态。本页记录了预期设计，以使整体架构完整；可运行的步骤将随模块一同发布。
+</Aside>
+
+## 计划设计
+
+DNS 负载均衡器堆栈由三个 F5 XC 资源以及区域中的一条记录组成：
+
+| 资源 | 角色 |
+| --- | --- |
+| `xcsh_dns_lb_health_check` | 探测每个成员（HTTP、HTTPS、TCP、ICMP 或 UDP）以判断池的健康状态 |
+| `xcsh_dns_lb_pool` | 一组成员，具有负载均衡模式（`ROUND_ROBIN`、`PRIORITY` 等）并引用健康检查 |
+| `xcsh_dns_load_balancer` | 按请求选择池的规则，以及一个回退池 |
+| `lb_record`（在 `xcsh_dns_zone` 中） | 将区域中的名称绑定到 DNS 负载均衡器 |
+
+`dns-lb` 模块将承载这些资源，区域模块将增加一个指向负载均衡器的 `lb_record` 条目——因此，单次 `terraform apply` 即可构建完整的故障转移路径。
+
+## 计划演示
+
+模块发布后，故障转移演示将：
+
+1. 在 DNS 负载均衡器后部署两个池（主池和备用池），并配置健康检查。
+2. 解析负载均衡名称，确认其返回主池的应答。
+3. 使主池变为不健康状态，确认解析故障转移至备用池——就绪门控持续轮询 `dig`，直至应答发生变化。
+4. 恢复主池，确认故障回切。
+
+在此之前，请继续前往[第四阶段 — 拆除](/dns/demo/phase-4-teardown/)，以删除第一阶段创建的区域。

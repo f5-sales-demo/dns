@@ -1,0 +1,75 @@
+---
+title: Fase 2 — Validar
+description: >-
+  Confirme que la zona DNS de F5 Distributed Cloud se resuelve en la internet
+  pública, que el conjunto de registros de F5 XC coincide y que el plan de
+  Terraform es idempotente.
+sidebar:
+  order: 3
+  label: Fase 2 — Validar
+i18n:
+  sourceHash: 57c1c28019b0
+  translator: machine
+---
+
+import { Steps, Aside } from "@astrojs/starlight/components";
+
+La Fase 2 confirma que la zona creada en la [Fase 1](/dns/demo/phase-1-build/) está activa: los registros se resuelven públicamente,
+la configuración de F5 XC coincide con lo que Terraform declaró y una nueva planificación no reporta ninguna desviación.
+
+## Requisito de preparación
+
+Consulte la zona a través de la API de F5 XC y confirme que el conjunto de registros esperado existe. Complete los
+marcadores de posición desde el formulario en la parte superior de la página, un archivo `.env` o su shell.
+
+```bash
+curl -s \
+  -H "Authorization: APIToken xF5XC_API_TOKENx" \
+  "xF5XC_API_URLx/api/config/dns/namespaces/system/dns_zones/xF5XC_DOMAINx" \
+  | jq '{
+    zone: .metadata.name,
+    group: .spec.primary.rr_set_group[0].metadata.name,
+    records: [.spec.primary.rr_set_group[0].rr_set[] | .a_record.name],
+    status: (if (.metadata.name != null) then "PASS" else "FAIL" end)
+  }'
+```
+
+Un resultado `PASS` con el grupo `demo-records` y los nombres `www` / `app` / `api` confirma el lado de F5 XC.
+
+## Resolución pública
+
+El dominio está delegado a F5 XC, por lo que los registros se resuelven en la internet pública. Compruebe cada nombre:
+
+```bash
+for name in www app api; do
+  echo "$name.xF5XC_DOMAINx -> $(dig +short "$name.xF5XC_DOMAINx" A | tr '\n' ' ')"
+done
+```
+
+<Aside type="note">
+Si las direcciones de documentación RFC 5737 predeterminadas (`203.0.113.x`) siguen vigentes, la resolución
+devuelve esas direcciones aunque no haya nada alojado en ellas — esto es esperado para una demostración de documentación.
+Reemplácelas con destinos reales para servir tráfico en producción.
+</Aside>
+
+## Idempotencia
+
+Una segunda planificación sobre la configuración sin cambios debe reportar ninguna modificación:
+
+<Steps>
+
+1. Vuelva a ejecutar el plan:
+
+   ```sh
+   cd terraform
+   terraform plan
+   ```
+
+2. Confirme que la salida sea **`No changes. Your infrastructure matches the configuration.`**
+
+</Steps>
+
+En CI, la misma garantía se mantiene: reabrir una solicitud de extracción que no modifica `terraform/` produce
+un plan vacío.
+
+Continúe con la [Fase 3 — Conmutación por error](/dns/demo/phase-3-failover/).

@@ -1,0 +1,71 @@
+---
+title: المرحلة 4 — إزالة البنية
+description: >-
+  إزالة منطقة DNS الخاصة بـ F5 Distributed Cloud وسجلاتها باستخدام Terraform بعد
+  التأكيد الصريح، مع الإبقاء على واجهة حالة Azure سليمة.
+sidebar:
+  order: 5
+  label: المرحلة 4 — إزالة البنية
+i18n:
+  sourceHash: e7f39a0cb91f
+  translator: machine
+---
+
+import { Steps, Aside } from "@astrojs/starlight/components";
+
+تقوم المرحلة 4 بإزالة كل ما أنشأه المخطط. يقوم `terraform destroy` بحذف `xcsh_dns_zone` المُدار
+(وسجلاته) عبر واجهة F5 XC API وتحديث الحالة البعيدة.
+
+<Aside type="caution">
+عملية الإزالة لا يمكن التراجع عنها وتحذف سجلات DNS العامة للنطاق. تأكد من النطاق المستهدف
+والمستأجر قبل المتابعة — تُحدد بيانات الاعتماد والمدخلات في بيئتك ما سيتم حذفه.
+</Aside>
+
+## الإزالة
+
+<Steps>
+
+1. تأكد من أن بيئتك تستهدف المستأجر والنطاق المقصودَين:
+
+   ```sh
+   echo "$XCSH_API_URL"
+   grep '^domain' terraform/terraform.tfvars
+   ```
+
+2. راجع ما سيتم إزالته:
+
+   ```sh
+   cd terraform
+   terraform plan -destroy
+   ```
+
+3. نفّذ الإزالة بعد مراجعة المخطط:
+
+   ```sh
+   terraform destroy
+   ```
+
+</Steps>
+
+## التحقق من الإزالة
+
+تأكد من اختفاء المنطقة من F5 XC (يُتوقع الحصول على HTTP `404`):
+
+```bash
+curl -s -o /dev/null -w '%{http_code}\n' \
+  -H "Authorization: APIToken xF5XC_API_TOKENx" \
+  "xF5XC_API_URLx/api/config/dns/namespaces/system/dns_zones/xF5XC_DOMAINx"
+```
+
+يتوقف الحل العام بمجرد أن تُسقط خوادم الأسماء المفوّضة السجلات.
+
+## ما يبقى
+
+واجهة حالة Azure (مجموعة الموارد، وحساب التخزين، والحاوية) **لا** تتم إزالتها بواسطة
+`terraform destroy` — فهي تحتفظ بالحالة وتُعاد استخدامها عبر عمليات التشغيل المختلفة. يبقى ملف الحالة محتفظاً بسجل التكوين الفارغ. لا تُزل الواجهة الخلفية إلا عند إيقاف البيئة بالكامل، وذلك باستخدام Azure CLI:
+
+```sh
+az group delete --name f5-sales-demo-tfstate --yes
+```
+
+لإعادة البناء، ابدأ من جديد في [المرحلة 1 — البناء](/dns/demo/phase-1-build/).

@@ -1,0 +1,72 @@
+---
+title: 4단계 — 해제
+description: >-
+  명시적 확인 후 Terraform을 사용하여 F5 Distributed Cloud DNS 영역과 해당 레코드를 제거하며, Azure 상태
+  백엔드는 그대로 유지합니다.
+sidebar:
+  order: 5
+  label: 4단계 — 해제
+i18n:
+  sourceHash: e7f39a0cb91f
+  translator: machine
+---
+
+import { Steps, Aside } from "@astrojs/starlight/components";
+
+4단계에서는 플랜이 생성한 모든 항목을 제거합니다. `terraform destroy`는 F5 XC API를 통해 관리되는 `xcsh_dns_zone`
+(및 해당 레코드)을 삭제하고 원격 상태를 업데이트합니다.
+
+<Aside type="caution">
+삭제는 되돌릴 수 없으며 도메인의 공개 DNS 레코드가 제거됩니다. 진행하기 전에 대상 도메인과
+테넌트를 확인하십시오 — 환경의 자격 증명과 입력값이 삭제 대상을 결정합니다.
+</Aside>
+
+## 삭제
+
+<Steps>
+
+1. 환경이 의도한 테넌트와 도메인을 대상으로 하는지 확인합니다:
+
+   ```sh
+   echo "$XCSH_API_URL"
+   grep '^domain' terraform/terraform.tfvars
+   ```
+
+2. 삭제될 항목을 검토합니다:
+
+   ```sh
+   cd terraform
+   terraform plan -destroy
+   ```
+
+3. 플랜을 검토한 후 삭제를 실행합니다:
+
+   ```sh
+   terraform destroy
+   ```
+
+</Steps>
+
+## 제거 확인
+
+F5 XC에서 영역이 삭제되었는지 확인합니다 (HTTP `404` 응답이 예상됩니다):
+
+```bash
+curl -s -o /dev/null -w '%{http_code}\n' \
+  -H "Authorization: APIToken xF5XC_API_TOKENx" \
+  "xF5XC_API_URLx/api/config/dns/namespaces/system/dns_zones/xF5XC_DOMAINx"
+```
+
+위임된 네임서버가 레코드를 제거하면 공개 도메인 해석이 중단됩니다.
+
+## 남아 있는 항목
+
+Azure 상태 백엔드(리소스 그룹, 스토리지 계정, 컨테이너)는 `terraform destroy`로
+**제거되지 않습니다** — 상태를 보관하며 실행 간에 재사용됩니다. 상태 파일은 유지되며, 이제 빈 구성을
+기록합니다. Azure CLI를 사용하여 환경을 완전히 폐기할 때만 백엔드를 제거하십시오:
+
+```sh
+az group delete --name f5-sales-demo-tfstate --yes
+```
+
+다시 구축하려면 [1단계 — 빌드](/dns/demo/phase-1-build/)부터 시작하십시오.

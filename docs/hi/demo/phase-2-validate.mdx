@@ -1,0 +1,73 @@
+---
+title: चरण 2 — सत्यापन
+description: >-
+  पुष्टि करें कि F5 Distributed Cloud DNS ज़ोन सार्वजनिक इंटरनेट पर रिज़ॉल्व
+  होता है, F5 XC कंसोल रिकॉर्ड सेट मेल खाता है, और Terraform प्लान आइडेम्पोटेंट
+  है।
+sidebar:
+  order: 3
+  label: चरण 2 — सत्यापन
+i18n:
+  sourceHash: 57c1c28019b0
+  translator: machine
+---
+
+import { Steps, Aside } from "@astrojs/starlight/components";
+
+चरण 2 यह पुष्टि करता है कि [चरण 1](/dns/demo/phase-1-build/) से बनाया गया ज़ोन लाइव है: रिकॉर्ड सार्वजनिक रूप से रिज़ॉल्व होते हैं,
+F5 XC कॉन्फ़िगरेशन Terraform में घोषित से मेल खाता है, और पुनः-प्लान कोई drift रिपोर्ट नहीं करता।
+
+## तत्परता जाँच
+
+F5 XC API के माध्यम से ज़ोन की क्वेरी करें और पुष्टि करें कि अपेक्षित रिकॉर्ड सेट मौजूद है। पृष्ठ के शीर्ष पर दिए गए फ़ॉर्म, किसी `.env` फ़ाइल, या आपके शेल से प्लेसहोल्डर भरें।
+
+```bash
+curl -s \
+  -H "Authorization: APIToken xF5XC_API_TOKENx" \
+  "xF5XC_API_URLx/api/config/dns/namespaces/system/dns_zones/xF5XC_DOMAINx" \
+  | jq '{
+    zone: .metadata.name,
+    group: .spec.primary.rr_set_group[0].metadata.name,
+    records: [.spec.primary.rr_set_group[0].rr_set[] | .a_record.name],
+    status: (if (.metadata.name != null) then "PASS" else "FAIL" end)
+  }'
+```
+
+`demo-records` ग्रुप और `www` / `app` / `api` नामों के साथ `PASS` प्राप्त होना F5 XC पक्ष की पुष्टि करता है।
+
+## सार्वजनिक रिज़ॉल्यूशन
+
+डोमेन F5 XC को डेलीगेट किया गया है, इसलिए रिकॉर्ड सार्वजनिक इंटरनेट पर रिज़ॉल्व होते हैं। प्रत्येक नाम की जाँच करें:
+
+```bash
+for name in www app api; do
+  echo "$name.xF5XC_DOMAINx -> $(dig +short "$name.xF5XC_DOMAINx" A | tr '\n' ' ')"
+done
+```
+
+<Aside type="note">
+यदि डिफ़ॉल्ट RFC 5737 दस्तावेज़ीकरण पते (`203.0.113.x`) अभी भी लागू हैं, तो रिज़ॉल्यूशन
+उन पतों को वापस करता है, भले ही वहाँ कुछ भी होस्ट नहीं है — यह एक दस्तावेज़ीकरण
+डेमो के लिए अपेक्षित है। लाइव ट्रैफ़िक सर्व करने के लिए उन्हें वास्तविक लक्ष्यों से बदलें।
+</Aside>
+
+## आइडेम्पोटेंसी
+
+अपरिवर्तित कॉन्फ़िगरेशन के विरुद्ध दूसरा प्लान कोई बदलाव रिपोर्ट नहीं करना चाहिए:
+
+<Steps>
+
+1. प्लान पुनः चलाएँ:
+
+   ```sh
+   cd terraform
+   terraform plan
+   ```
+
+2. पुष्टि करें कि आउटपुट **`No changes. Your infrastructure matches the configuration.`** है।
+
+</Steps>
+
+CI में, यही गारंटी लागू होती है: किसी ऐसे pull request को पुनः खोलना जो `terraform/` नहीं बदलता, एक खाली प्लान उत्पन्न करता है।
+
+[चरण 3 — फ़ेलओवर](/dns/demo/phase-3-failover/) पर जारी रखें।

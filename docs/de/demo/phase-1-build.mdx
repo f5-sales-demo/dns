@@ -1,0 +1,421 @@
+---
+title: Phase 1 — Build
+description: >-
+  Stellen Sie die F5 Distributed Cloud DNS-Zone mit Terraform bereit — die
+  Plan-Dateien, erforderliche Variablen und Secrets, Azure-Remote-State und den
+  GitHub Actions-Workflow.
+sidebar:
+  order: 2
+  label: Phase 1 — Build
+i18n:
+  sourceHash: 1b2a3a4d703d
+  translator: machine
+---
+
+import { Steps, Aside, Tabs, TabItem } from "@astrojs/starlight/components";
+
+Phase 1 stellt eine autoritative **primäre DNS-Zone** auf F5 Distributed Cloud mit Terraform bereit,
+unterstützt durch Remote-State in Azure Blob Storage. Diese Seite zeigt jede Datei im Plan, erläutert
+die erforderlichen Variablen und Secrets und beschreibt sowohl eine lokale Ausführung als auch die
+GitHub Actions-Pipeline.
+
+## Was wird bereitgestellt
+
+- Eine `xcsh_dns_zone` für Ihre delegierte Domain im `system`-Namespace, mit einer `demo-records`-Gruppe
+  von A-Records (`www`, `app`, `api`).
+- Terraform-State, gespeichert in einem Azure Blob Storage-Container, sodass derselbe State zwischen
+  Ihrem Rechner und CI geteilt wird.
+
+<Aside type="note">
+DNS-Objekte müssen im `system`-Namespace erstellt werden — die F5 XC API lehnt andere Namespaces ab.
+Der Zonenname muss eine Domain sein, die Ihr Konto besitzt, und Record-TTLs müssen mindestens
+60 Sekunden betragen.
+</Aside>
+
+## Der Plan
+
+Der Plan befindet sich unter `terraform/`: ein schlankes Root-Modul, das Eingaben in ein
+`dns-zone`-Modul einbindet.
+
+### versions.tf
+
+Legt Terraform und den Provider fest. Die Provider-Einschränkung ist `>= 3.61.15` — das erste
+Registry-Release, das die DNS-Ressourcen enthält.
+
+```hcl
+terraform {
+  required_version = ">= 1.5"
+
+  required_providers {
+    xcsh = {
+      source = "f5-sales-demo/xcsh"
+      # First registry release that ships the DNS resources (xcsh_dns_zone,
+      # dns_lb_*, geo_location_set). Earlier releases lack them. Locally the
+      # provider is consumed via dev_overrides, which ignores this constraint.
+      version = ">= 3.61.15"
+    }
+  }
+}
+```
+
+### providers.tf
+
+Der Provider nimmt keine Argumente im Code entgegen — er authentifiziert sich aus der Umgebung,
+sodass keine Secrets committet werden.
+
+```hcl
+# The xcsh provider authenticates from the environment — no secrets in code.
+# Export one of the following credential sets before running Terraform:
+#
+#   Token auth:  XCSH_API_URL + XCSH_API_TOKEN
+#   P12 auth:    XCSH_API_URL + XCSH_P12_FILE + XCSH_P12_PASSWORD
+#   PEM auth:    XCSH_API_URL + XCSH_CERT + XCSH_KEY
+#
+# See terraform/README.md for local dev setup (dev_overrides + env).
+provider "xcsh" {}
+```
+
+### backend.tf
+
+Ein **partielles** `azurerm`-Backend: Keine umgebungsspezifischen Werte sind fest einprogrammiert.
+Die Koordinaten werden zur `init`-Zeit angegeben (aus einer lokalen Datei oder aus GitHub
+Actions-Variablen in CI).
+
+```hcl
+terraform {
+  # Azure Blob Storage remote state, configured as a PARTIAL backend:
+  # no environment-specific values are hardcoded here. Supply them at init time.
+  #
+  #   CI:    terraform init -backend-config="resource_group_name=$RG" ...
+  #          (values from GitHub Actions repository variables)
+  #   Local: terraform init -backend-config=backend.hcl   (copy backend.hcl.example; gitignored)
+  #
+  # Auth is the storage account access key via the ARM_ACCESS_KEY environment
+  # variable (never committed). Keyless auth (use_oidc / use_azuread_auth) is not
+  # used: our Contributor-only RBAC cannot assign the "Storage Blob Data
+  # Contributor" role those methods require.
+  backend "azurerm" {}
+}
+```
+
+### variables.tf
+
+`namespace` wird auf `system` validiert; `domain` ist erforderlich (wird zur Laufzeit angegeben, nie
+fest einprogrammiert); `a_records` bildet jeden Record-Namen auf seine IPv4-Adressen ab.
+
+```hcl
+variable "namespace" {
+  description = "F5 XC namespace for DNS objects. DNS objects MUST live in 'system'."
+  type        = string
+  default     = "system"
+
+  validation {
+    condition     = var.namespace == "system"
+    error_message = "F5 XC DNS objects must be created in the 'system' namespace."
+  }
+}
+
+variable "domain" {
+  description = "DNS zone FQDN (required; supplied via TF_VAR_domain / a GitHub variable / tfvars)."
+  type        = string
+}
+
+variable "labels" {
+  description = "Labels applied to managed DNS objects."
+  type        = map(string)
+  default = {
+    managed_by = "terraform"
+    use_case   = "dns"
+  }
+}
+
+variable "a_records" {
+  description = "A records: record name (\"\" = apex) to list of IPv4 addresses."
+  type        = map(list(string))
+  default = {
+    www = ["203.0.113.10"]
+    app = ["203.0.113.20"]
+    api = ["203.0.113.30"]
+  }
+}
+```
+
+<Aside type="tip">
+Die Standard-A-Records verwenden RFC 5737-Dokumentationsadressen (`203.0.113.0/24`), die nicht
+routbar sind. Ersetzen Sie diese durch echte Ziele für eine Live-Demo.
+</Aside>
+
+### main.tf und das dns-zone-Modul
+
+Das Root-Modul verbindet Eingaben mit `./modules/dns-zone`:
+
+```hcl
+module "dns_zone" {
+  source = "./modules/dns-zone"
+
+  domain    = var.domain
+  namespace = var.namespace
+  labels    = var.labels
+  a_records = var.a_records
+}
+```
+
+Das Modul erstellt die Zone. Ein `dynamic "rr_set"`-Block wandelt die `a_records`-Map in einen
+Record-Set pro Eintrag um:
+
+```hcl
+resource "xcsh_dns_zone" "this" {
+  name      = var.domain
+  namespace = var.namespace
+  labels    = var.labels
+
+  primary {
+    default_soa_parameters {}
+
+    rr_set_group {
+      metadata {
+        name = "demo-records"
+      }
+
+      dynamic "rr_set" {
+        for_each = var.a_records
+        content {
+          ttl = var.record_ttl
+          a_record {
+            name   = rr_set.key
+            values = rr_set.value
+          }
+        }
+      }
+    }
+  }
+}
+```
+
+Das Root-`outputs.tf` re-exportiert den Zonennamen und den F5 XC-Bezeichner aus dem Modul.
+
+## Erforderliche Variablen und Secrets
+
+Nichts Umgebungsspezifisches ist in die `.tf`-Dateien eingebettet. Alles wird zur Laufzeit
+angegeben — aus GitHub Actions-**Variablen** und **Secrets** in CI oder aus lokalen Dateien und
+Umgebungsvariablen.
+
+| Wert | Zweck | CI-Quelle | Lokale Quelle |
+| --- | --- | --- | --- |
+| `resource_group_name`, `storage_account_name`, `container_name`, `key` | azurerm-Backend-Koordinaten | Repository-**Variablen** `TFSTATE_RESOURCE_GROUP`, `TFSTATE_STORAGE_ACCOUNT`, `TFSTATE_CONTAINER`, `TFSTATE_KEY` (übergeben via `-backend-config`) | `backend.hcl` (kopieren Sie `backend.hcl.example`; gitignoriert) |
+| `domain`, `namespace` | Terraform-Eingaben | Repository-**Variablen** `DNS_DOMAIN`, `DNS_NAMESPACE` (als `TF_VAR_domain` / `TF_VAR_namespace`) | `terraform.tfvars` (kopieren Sie das Beispiel) oder `TF_VAR_*` |
+| `ARM_ACCESS_KEY` | azurerm-Backend-Auth (Storage-Account-Schlüssel) | Repository-**Secret** | `export ARM_ACCESS_KEY=...` |
+| `XCSH_API_URL`, `XCSH_API_TOKEN` | xcsh-Provider-Auth | Repository-**Secrets** | `export XCSH_API_URL=... XCSH_API_TOKEN=...` |
+
+Die zwei Beispieldateien, die im Repository enthalten sind:
+
+<Tabs>
+<TabItem label="backend.hcl.example">
+
+```hcl
+resource_group_name  = "f5-sales-demo-tfstate"
+storage_account_name = "f5salesdemotfstate"
+container_name       = "tfstate"
+key                  = "dns.tfstate"
+```
+
+</TabItem>
+<TabItem label="terraform.tfvars.example">
+
+```hcl
+namespace = "system"
+domain    = "f5-sales-demo.com"
+
+labels = {
+  managed_by = "terraform"
+  use_case   = "dns"
+}
+
+a_records = {
+  www = ["203.0.113.10"]
+  app = ["203.0.113.20"]
+  api = ["203.0.113.30"]
+}
+```
+
+</TabItem>
+</Tabs>
+
+<Aside type="caution">
+Die Backend-Auth verwendet den Storage-Account-Zugriffsschlüssel (`ARM_ACCESS_KEY`) anstelle von
+schlüssellosem OIDC / Azure AD. Schlüsselloser Datenebenen-Zugriff benötigt die Rolle *Storage Blob
+Data Contributor*, die ein Abonnement mit ausschließlich Contributor-Rechten nicht vergeben kann. Der
+Zugriffsschlüssel lebt nur in der Umgebung oder einem GitHub Secret — er wird nie committet.
+</Aside>
+
+## Bootstrap des Azure-State-Backends
+
+Das Backend-Storage kann sein eigenes Bootstrap nicht speichern, daher erstellen Sie es einmalig,
+außerhalb des Bands, mit einer authentifizierten Azure CLI-Sitzung. Das Repository enthält
+`scripts/bootstrap-azure-state.sh`:
+
+```sh
+az group create --name f5-sales-demo-tfstate --location eastus2 \
+  --tags managed_by=terraform use_case=dns purpose=tfstate
+
+az storage account create --name f5salesdemotfstate --resource-group f5-sales-demo-tfstate \
+  --location eastus2 --sku Standard_LRS --kind StorageV2 \
+  --min-tls-version TLS1_2 --allow-blob-public-access false
+
+# State safety: keep prior versions and allow recovery of deleted state blobs.
+az storage account blob-service-properties update \
+  --account-name f5salesdemotfstate --resource-group f5-sales-demo-tfstate \
+  --enable-versioning true \
+  --enable-delete-retention true --delete-retention-days 7 \
+  --enable-container-delete-retention true --container-delete-retention-days 7
+
+KEY="$(az storage account keys list \
+  --account-name f5salesdemotfstate --resource-group f5-sales-demo-tfstate \
+  --query '[0].value' -o tsv)"
+
+az storage container create --name tfstate \
+  --account-name f5salesdemotfstate --auth-mode key --account-key "$KEY"
+```
+
+Exportieren Sie dann den Schlüssel für lokale Ausführungen und legen Sie ihn (zusammen mit den
+Provider-Credentials) als GitHub Secrets fest:
+
+```sh
+export ARM_ACCESS_KEY="$KEY"
+gh secret set ARM_ACCESS_KEY -R f5-sales-demo/dns
+gh secret set XCSH_API_URL   -R f5-sales-demo/dns
+gh secret set XCSH_API_TOKEN -R f5-sales-demo/dns
+```
+
+## Lokal bereitstellen
+
+<Steps>
+
+1. **Eingaben konfigurieren.** Kopieren Sie die Beispiele und tragen Sie Ihre Werte ein:
+
+   ```sh
+   cp terraform/backend.hcl.example terraform/backend.hcl
+   cp terraform/terraform.tfvars.example terraform/terraform.tfvars
+   ```
+
+2. **Credentials exportieren:**
+
+   ```sh
+   export XCSH_API_URL="https://<tenant>.console.ves.volterra.io"
+   export XCSH_API_TOKEN="<api-token>"
+   export ARM_ACCESS_KEY="<storage-account-key>"
+   ```
+
+3. **Backend initialisieren** mit der partiellen Konfiguration:
+
+   ```sh
+   cd terraform
+   terraform init -backend-config=backend.hcl
+   ```
+
+4. **Formatierung prüfen und validieren:**
+
+   ```sh
+   terraform fmt -check -recursive
+   terraform validate
+   ```
+
+5. **Planen und anwenden:**
+
+   ```sh
+   terraform plan
+   terraform apply
+   ```
+
+</Steps>
+
+Eine erfolgreiche Anwendung erstellt die Zone und schreibt den State in den Azure-Container.
+Fahren Sie mit [Phase 2 — Validate](/dns/demo/phase-2-validate/) fort, um zu bestätigen, dass
+sie aufgelöst wird.
+
+## Kontinuierliche Integration
+
+Der `.github/workflows/terraform.yml`-Workflow führt einen **Plan** bei jedem Pull Request und ein
+**Apply** beim Merge in `main` aus. Er liest die Backend-Koordinaten und Eingaben aus
+Repository-Variablen und die Credentials aus Secrets, injiziert jeden Wert nur in den Schritt, der
+ihn benötigt, und serialisiert Ausführungen über eine Concurrency-Gruppe, sodass zwei Applies nie
+gleichzeitig am gemeinsamen State-Blob arbeiten.
+
+```yaml
+name: Terraform
+
+on:
+  pull_request:
+    branches: [main]
+    paths: ['terraform/**', '.github/workflows/terraform.yml']
+  push:
+    branches: [main]
+    paths: ['terraform/**']
+
+permissions:
+  contents: read
+
+concurrency:
+  group: terraform-state
+  cancel-in-progress: false
+
+env:
+  TF_IN_AUTOMATION: 'true'
+
+jobs:
+  terraform:
+    name: ${{ github.event_name == 'push' && 'apply' || 'plan' }}
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: terraform
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # v4.0.1
+
+      - name: Init
+        env:
+          ARM_ACCESS_KEY: ${{ secrets.ARM_ACCESS_KEY }}
+          RESOURCE_GROUP: ${{ vars.TFSTATE_RESOURCE_GROUP }}
+          STORAGE_ACCOUNT: ${{ vars.TFSTATE_STORAGE_ACCOUNT }}
+          CONTAINER: ${{ vars.TFSTATE_CONTAINER }}
+          STATE_KEY: ${{ vars.TFSTATE_KEY }}
+        run: |
+          terraform init -input=false \
+            -backend-config="resource_group_name=${RESOURCE_GROUP}" \
+            -backend-config="storage_account_name=${STORAGE_ACCOUNT}" \
+            -backend-config="container_name=${CONTAINER}" \
+            -backend-config="key=${STATE_KEY}"
+
+      - name: Format check
+        run: terraform fmt -check -recursive
+
+      - name: Validate
+        run: terraform validate -no-color
+
+      - name: Plan
+        if: github.event_name == 'pull_request'
+        env:
+          ARM_ACCESS_KEY: ${{ secrets.ARM_ACCESS_KEY }}
+          XCSH_API_URL: ${{ secrets.XCSH_API_URL }}
+          XCSH_API_TOKEN: ${{ secrets.XCSH_API_TOKEN }}
+          TF_VAR_domain: ${{ vars.DNS_DOMAIN }}
+          TF_VAR_namespace: ${{ vars.DNS_NAMESPACE }}
+        run: terraform plan -input=false -no-color
+
+      - name: Apply
+        if: github.event_name == 'push'
+        env:
+          ARM_ACCESS_KEY: ${{ secrets.ARM_ACCESS_KEY }}
+          XCSH_API_URL: ${{ secrets.XCSH_API_URL }}
+          XCSH_API_TOKEN: ${{ secrets.XCSH_API_TOKEN }}
+          TF_VAR_domain: ${{ vars.DNS_DOMAIN }}
+          TF_VAR_namespace: ${{ vars.DNS_NAMESPACE }}
+        run: terraform apply -input=false -auto-approve -no-color
+```
+
+Die Actions sind auf Commit-SHAs fixiert (mit Versionskommentaren), und Secrets sind auf die
+`init`-, `plan`- und `apply`-Schritte beschränkt, nicht auf den gesamten Job.

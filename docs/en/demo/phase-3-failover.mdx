@@ -1,0 +1,45 @@
+---
+title: "Phase 3 — Failover"
+description: Health-checked DNS failover on F5 Distributed Cloud with a DNS load balancer — the planned design, pending the dns-lb Terraform module.
+sidebar:
+  order: 4
+  label: "Phase 3 — Failover"
+---
+
+import { Aside } from "@astrojs/starlight/components";
+
+Phase 3 adds **health-checked failover** on top of the zone from
+[Phase 1](/dns/demo/phase-1-build/): an F5 XC **DNS load balancer** returns different answers for a
+name based on pool health, so traffic moves to a healthy pool automatically.
+
+<Aside type="caution" title="Pending the dns-lb module">
+This phase is not yet executable. It depends on a `dns-lb` Terraform module that is a follow-up to
+the current plan, blocked on pinning the `lb_record` wire format. This page documents the intended
+design so the arc is complete; the runnable steps land with the module.
+</Aside>
+
+## Planned design
+
+The DNS load-balancer stack is three F5 XC resources plus a record in the zone:
+
+| Resource | Role |
+| --- | --- |
+| `xcsh_dns_lb_health_check` | Probes each member (HTTP, HTTPS, TCP, ICMP, or UDP) to decide pool health |
+| `xcsh_dns_lb_pool` | A set of members with a load-balancing mode (`ROUND_ROBIN`, `PRIORITY`, …) and a reference to the health check |
+| `xcsh_dns_load_balancer` | Rules that select a pool per request, with a fallback pool |
+| `lb_record` (in `xcsh_dns_zone`) | Binds a name in the zone to the DNS load balancer |
+
+The `dns-lb` module will express these, and the zone module will grow an `lb_record` entry pointing
+at the load balancer — so a single `terraform apply` builds the whole failover path.
+
+## Planned demonstration
+
+Once the module ships, the failover demo will:
+
+1. Deploy two pools (primary and secondary) behind the DNS load balancer, with a health check.
+2. Resolve the load-balanced name and confirm it returns the primary pool's answer.
+3. Make the primary unhealthy and confirm resolution fails over to the secondary — the readiness gate
+   polls `dig` until the answer changes.
+4. Restore the primary and confirm failback.
+
+Until then, continue to [Phase 4 — Teardown](/dns/demo/phase-4-teardown/) to remove the Phase 1 zone.

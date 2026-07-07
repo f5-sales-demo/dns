@@ -1,0 +1,73 @@
+---
+title: Fase 4 — Desmontagem
+description: >-
+  Remova a zona DNS do F5 Distributed Cloud e seus registros com o Terraform
+  após confirmação explícita, mantendo o backend de estado do Azure intacto.
+sidebar:
+  order: 5
+  label: Fase 4 — Desmontagem
+i18n:
+  sourceHash: e7f39a0cb91f
+  translator: machine
+---
+
+import { Steps, Aside } from "@astrojs/starlight/components";
+
+A Fase 4 remove tudo o que o plano criou. O `terraform destroy` exclui o `xcsh_dns_zone` gerenciado
+(e seus registros) por meio da API do F5 XC e atualiza o estado remoto.
+
+<Aside type="caution">
+A destruição é irreversível e remove os registros DNS públicos do domínio. Confirme o domínio alvo e
+o tenant antes de prosseguir — as credenciais e entradas no seu ambiente determinam o que será excluído.
+</Aside>
+
+## Destruir
+
+<Steps>
+
+1. Confirme que seu ambiente aponta para o tenant e o domínio pretendidos:
+
+   ```sh
+   echo "$XCSH_API_URL"
+   grep '^domain' terraform/terraform.tfvars
+   ```
+
+2. Revise o que será destruído:
+
+   ```sh
+   cd terraform
+   terraform plan -destroy
+   ```
+
+3. Destrua após revisar o plano:
+
+   ```sh
+   terraform destroy
+   ```
+
+</Steps>
+
+## Verificar remoção
+
+Confirme que a zona foi removida do F5 XC (espere HTTP `404`):
+
+```bash
+curl -s -o /dev/null -w '%{http_code}\n' \
+  -H "Authorization: APIToken xF5XC_API_TOKENx" \
+  "xF5XC_API_URLx/api/config/dns/namespaces/system/dns_zones/xF5XC_DOMAINx"
+```
+
+A resolução pública é interrompida assim que os servidores de nome delegados descartam os registros.
+
+## O que permanece
+
+O backend de estado do Azure (grupo de recursos, conta de armazenamento, contêiner) **não** é removido pelo
+`terraform destroy` — ele mantém o estado e é reutilizado entre execuções. O arquivo de estado permanece, agora
+registrando uma configuração vazia. Remova o backend somente quando estiver desativando o ambiente
+completamente, com o Azure CLI:
+
+```sh
+az group delete --name f5-sales-demo-tfstate --yes
+```
+
+Para reconstruir, comece novamente em [Fase 1 — Build](/dns/demo/phase-1-build/).
