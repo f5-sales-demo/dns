@@ -4,10 +4,10 @@ terraform {
   required_providers {
     xcsh = {
       source = "f5-sales-demo/xcsh"
-      # First registry release that ships the DNS resources (xcsh_dns_zone,
-      # dns_lb_*, geo_location_set). Earlier releases lack them. Locally the
-      # provider is consumed via dev_overrides, which ignores this constraint.
-      version = ">= 3.61.15"
+      # >= 3.62.0: release where the namespace attribute for system-only DNS
+      # resources defaults to "system" (spec-driven), so it can be omitted.
+      # Locally the provider is consumed via dev_overrides, which ignores this.
+      version = ">= 3.62.0"
     }
   }
 }

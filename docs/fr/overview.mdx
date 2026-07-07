@@ -1,49 +1,49 @@
 ---
-title: Vue d'ensemble
+title: Présentation
 description: >-
-  Comment le cas d'usage DNS F5 Distributed Cloud est construit — un plan
+  Comment le cas d'usage DNS distribué F5 Cloud est construit — un plan
   Terraform xcsh-provider qui gère une zone DNS déléguée, avec l'état dans Azure
-  Blob Storage et GitHub Actions CI.
+  Blob Storage et CI GitHub Actions.
 sidebar:
   order: 1
-  label: Vue d'ensemble
+  label: Présentation
 i18n:
-  sourceHash: 353ce3cf521f
+  sourceHash: a9809c0f7860
   translator: machine
 ---
 
 import { Aside } from "@astrojs/starlight/components";
 
 Ce cas d'usage gère le **DNS faisant autorité sur F5 Distributed Cloud** avec Terraform. Un plan
-petit et réutilisable crée une zone DNS primaire et ses enregistrements pour un domaine délégué,
+réutilisable et compact crée une zone DNS primaire et ses enregistrements pour un domaine délégué,
 conserve son état dans **Azure Blob Storage**, et exécute plan-on-pull-request / apply-on-merge via
 **GitHub Actions**.
 
 ## Ce qu'il gère
 
 - Un `xcsh_dns_zone` — une zone **primaire** faisant autorité dans le namespace `system` de F5 XC,
-  avec des enregistrements A. Le nom de zone est le domaine délégué (une variable), de sorte que
-  le reciblagle est un changement de configuration, et non un changement de code.
+  avec des enregistrements A. Le nom de zone est le domaine délégué (une variable), de sorte que le
+  reciblage est un changement de configuration, non un changement de code.
 - L'état Terraform distant dans Azure, afin que les exécutions soient partageables entre la machine
-  d'un opérateur et l'environnement CI.
+  d'un opérateur et l'intégration continue.
 
 ## Architecture
 
 | Couche | Choix | Pourquoi |
 | --- | --- | --- |
 | Fournisseur | `f5-sales-demo/xcsh` (registre Terraform) | Généré à partir de l'OpenAPI F5 XC ; gère `xcsh_dns_zone` et les ressources d'équilibrage de charge DNS. S'authentifie avec un jeton API (`Authorization: APIToken <token>`). |
-| Backend d'état | `azurerm` (Azure Blob Storage), authentification par clé d'accès | État durable et partagé. L'authentification par clé d'accès est utilisée car l'abonnement n'accorde que le rôle Contributeur, qui ne peut pas attribuer le rôle *Storage Blob Data Contributor* nécessaire à l'authentification sans clé (OIDC / Azure AD). |
-| Automatisation | GitHub Actions | Plan à chaque pull request, application lors de la fusion dans `main`. Les coordonnées du backend et les entrées proviennent des **variables** du dépôt ; les informations d'identification proviennent des **secrets**. |
+| Backend d'état | `azurerm` (Azure Blob Storage), authentification par clé d'accès | État durable et partagé. L'authentification par clé d'accès est utilisée car l'abonnement n'accorde que le rôle Contributor, qui ne peut pas attribuer le rôle *Storage Blob Data Contributor* requis par l'authentification sans clé (OIDC / Azure AD). |
+| Automatisation | GitHub Actions | Plan à chaque pull request, apply à la fusion vers `main`. Les coordonnées du backend et les entrées proviennent des **variables** du dépôt ; les informations d'identification proviennent des **secrets**. |
 
 <Aside type="note">
 Tous les objets DNS F5 XC doivent résider dans le namespace `system` — l'API rejette les autres
-namespaces. Le plan applique cette contrainte avec une règle de validation de variable.
+namespaces. Le plan n'expose pas le namespace en tant qu'entrée : le fournisseur le fixe à `system`
+d'après la contrainte de namespace de la spécification API, il est donc entièrement omis.
 </Aside>
 
 ## Par où commencer
 
-Le parcours [Démonstration](/dns/demo/) décrit l'intégralité du cycle de vie de bout en bout :
-**Construction** de la zone avec Terraform, **Validation** de sa résolution, **Basculement** avec
-un équilibrage de charge DNS, et **Démantèlement**. Commencez par
-[Phase 1 — Construction](/dns/demo/phase-1-build/), qui constitue un guide complet pour déployer la
+Le parcours [Démo](/dns/demo/) couvre l'intégralité du cycle de vie de bout en bout : **Construction** de la zone avec
+Terraform, **Validation** de sa résolution, **Basculement** avec un équilibreur de charge DNS, et **Démontage**.
+Commencez par [Phase 1 — Construction](/dns/demo/phase-1-build/), qui est un guide complet pour déployer la
 zone, incluant chaque fichier Terraform, le workflow CI, ainsi que les variables et secrets requis.

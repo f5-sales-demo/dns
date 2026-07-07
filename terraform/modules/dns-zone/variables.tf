@@ -3,12 +3,6 @@ variable "domain" {
   type        = string
 }
 
-variable "namespace" {
-  description = "F5 XC namespace (must be 'system' for DNS objects)."
-  type        = string
-  default     = "system"
-}
-
 variable "labels" {
   description = "Labels applied to the DNS zone."
   type        = map(string)

@@ -2,42 +2,43 @@
 title: Demonstração
 description: >-
   Um exercício de DNS em quatro fases, orientado por Terraform no F5 Distributed
-  Cloud — Construção, Validação, Failover, Desmontagem.
+  Cloud — Construir, Validar, Failover, Encerrar.
 sidebar:
   order: 1
   label: Visão Geral
 i18n:
-  sourceHash: d6cd5c3d82ae
+  sourceHash: 28584ff7eba9
   translator: machine
 ---
 
 import { Aside } from "@astrojs/starlight/components";
 
-Este guia apresenta um **exercício completo de DNS** no F5 Distributed Cloud, orientado por Terraform.
-Está estruturado em quatro fases que um operador humano ou um assistente de IA pode executar de ponta a ponta. Cada
+Este guia apresenta um **exercício completo de DNS** no F5 Distributed Cloud, orientado pelo Terraform.
+Ele é estruturado em quatro fases que um operador humano ou um assistente de IA pode executar de ponta a ponta. Cada
 fase é idempotente: executá-la novamente converge para o mesmo estado.
 
 ## Fases do exercício
 
 | Fase | Objetivo |
 | --- | --- |
-| [Fase 1 — Construção](/dns/demo/phase-1-build/) | Implantar a zona DNS primária com Terraform; configurar estado remoto e CI |
-| [Fase 2 — Validação](/dns/demo/phase-2-validate/) | Confirmar que a zona resolve na internet pública e que o plano é idempotente |
-| [Fase 3 — Failover](/dns/demo/phase-3-failover/) | Adicionar um balanceador de carga DNS com failover verificado por integridade *(pendente o módulo DNS-LB)* |
-| [Fase 4 — Desmontagem](/dns/demo/phase-4-teardown/) | Destruir os objetos gerenciados após confirmação explícita |
+| [Fase 1 — Construir](/dns/demo/phase-1-build/) | Implantar a zona DNS primária com Terraform; configurar estado remoto e CI |
+| [Fase 2 — Validar](/dns/demo/phase-2-validate/) | Confirmar que a zona resolve na internet pública e que o plano é idempotente |
+| [Fase 3 — Failover](/dns/demo/phase-3-failover/) | Adicionar um balanceador de carga DNS com failover baseado em verificação de integridade *(pendente o módulo DNS-LB)* |
+| [Fase 4 — Encerrar](/dns/demo/phase-4-teardown/) | Destruir os objetos gerenciados após confirmação explícita |
 
 ## Pré-requisitos
 
 - **Terraform** ≥ 1.5.
-- O provedor **`f5-sales-demo/xcsh`** ≥ 3.61.15 (a primeira versão que inclui os recursos de DNS),
-  resolvido pelo registro do Terraform — ou uma compilação local via `dev_overrides`.
+- O provedor **`f5-sales-demo/xcsh`** ≥ 3.62.0 (namespaces somente de sistema definidos automaticamente por padrão),
+  resolvido a partir do registro do Terraform — ou uma compilação local via `dev_overrides`.
 - Um **token de API do F5 XC** com acesso ao namespace `system`.
-- A **CLI do Azure**, autenticada com permissão de Contribuidor na assinatura, para o bootstrap
-  único do backend de estado.
+- O **Azure CLI**, autenticado com a função Contributor na assinatura, para o bootstrap inicial do
+  backend de estado.
 
 <Aside type="caution">
-O domínio utilizado aqui está delegado ao F5 XC, portanto os registros criados resolvem na internet pública.
-Utilize um domínio de sua propriedade que você pretenda gerenciar — o plano é orientado por variáveis precisamente para que você possa direcionar ao seu próprio domínio.
+O domínio utilizado aqui está delegado ao F5 XC, portanto os registros que você criar serão resolvidos na internet pública.
+Utilize um domínio que você possui e pretende gerenciar — o plano é orientado por variáveis justamente para que você possa direcionar
+para o seu próprio domínio.
 </Aside>
 
-Comece pela [Fase 1 — Construção](/dns/demo/phase-1-build/).
+Comece com a [Fase 1 — Construir](/dns/demo/phase-1-build/).

@@ -2,8 +2,7 @@
 # Credentials are NOT set here — export XCSH_API_URL + XCSH_API_TOKEN in the
 # environment (see terraform/README.md).
 
-namespace = "system"
-domain    = "f5-sales-demo.com"
+domain = "f5-sales-demo.com"
 
 labels = {
   managed_by = "terraform"

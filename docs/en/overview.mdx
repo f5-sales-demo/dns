@@ -29,7 +29,8 @@ reusable plan creates a primary DNS zone and its records for a delegated domain,
 
 <Aside type="note">
 All F5 XC DNS objects must live in the `system` namespace — the API rejects other namespaces. The
-plan enforces this with a variable validation rule.
+plan does not expose namespace as an input: the provider fixes it to `system` from the API spec's
+namespace constraint, so it is omitted entirely.
 </Aside>
 
 ## Where to start

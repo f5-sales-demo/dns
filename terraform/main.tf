@@ -11,7 +11,6 @@ module "dns_zone" {
   source = "./modules/dns-zone"
 
   domain    = var.domain
-  namespace = var.namespace
   labels    = var.labels
   a_records = var.a_records
 }
