@@ -1,0 +1,75 @@
+---
+title: Phase 2 — Validierung
+description: >-
+  Bestätigen Sie, dass die F5 Distributed Cloud DNS-Zone im öffentlichen
+  Internet aufgelöst wird, der F5 XC-Eintragssatz übereinstimmt und der
+  Terraform-Plan idempotent ist.
+sidebar:
+  order: 3
+  label: Phase 2 — Validierung
+i18n:
+  sourceHash: 57c1c28019b0
+  translator: machine
+---
+
+import { Steps, Aside } from "@astrojs/starlight/components";
+
+Phase 2 bestätigt, dass die Zone aus [Phase 1](/dns/demo/phase-1-build/) aktiv ist: Einträge werden öffentlich aufgelöst,
+die F5 XC-Konfiguration stimmt mit der Terraform-Deklaration überein, und eine erneute Planung meldet keine Abweichungen.
+
+## Bereitschaftsprüfung
+
+Fragen Sie die Zone über die F5 XC API ab und bestätigen Sie, dass der erwartete Eintragssatz vorhanden ist. Füllen Sie die
+Platzhalter aus dem Formular oben auf der Seite, einer `.env`-Datei oder Ihrer Shell aus.
+
+```bash
+curl -s \
+  -H "Authorization: APIToken xF5XC_API_TOKENx" \
+  "xF5XC_API_URLx/api/config/dns/namespaces/system/dns_zones/xF5XC_DOMAINx" \
+  | jq '{
+    zone: .metadata.name,
+    group: .spec.primary.rr_set_group[0].metadata.name,
+    records: [.spec.primary.rr_set_group[0].rr_set[] | .a_record.name],
+    status: (if (.metadata.name != null) then "PASS" else "FAIL" end)
+  }'
+```
+
+Ein `PASS` mit der Gruppe `demo-records` und den Namen `www` / `app` / `api` bestätigt die F5 XC-Seite.
+
+## Öffentliche Auflösung
+
+Die Domain ist an F5 XC delegiert, sodass die Einträge im öffentlichen Internet aufgelöst werden. Überprüfen Sie jeden Namen:
+
+```bash
+for name in www app api; do
+  echo "$name.xF5XC_DOMAINx -> $(dig +short "$name.xF5XC_DOMAINx" A | tr '\n' ' ')"
+done
+```
+
+<Aside type="note">
+Wenn die standardmäßigen RFC 5737-Dokumentationsadressen (`203.0.113.x`) noch vorhanden sind, gibt die Auflösung
+diese Adressen zurück, auch wenn dort nichts gehostet wird — das ist für eine Dokumentations-Demo
+erwartet. Ersetzen Sie diese durch echte Ziele, um Live-Datenverkehr bereitzustellen.
+</Aside>
+
+## Idempotenz
+
+Ein zweiter Plan gegen die unveränderte Konfiguration darf keine Änderungen melden:
+
+<Steps>
+
+1. Führen Sie den Plan erneut aus:
+
+   ```sh
+   cd terraform
+   terraform plan
+   ```
+
+2. Bestätigen Sie, dass die Ausgabe **`No changes. Your infrastructure matches the configuration.`** lautet.
+
+</Steps>
+
+In CI gilt dieselbe Garantie: Das erneute Öffnen eines Pull Requests, der `terraform/` nicht ändert, erzeugt
+einen leeren Plan.
+
+Weiter zu [Phase 3 — Failover](/dns/demo/phase-3-failover/).

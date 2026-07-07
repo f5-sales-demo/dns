@@ -1,0 +1,72 @@
+---
+title: Phase 4 — Teardown
+description: >-
+  Entfernen Sie die F5 Distributed Cloud DNS-Zone und ihre Einträge mit
+  Terraform nach ausdrücklicher Bestätigung, wobei das Azure-State-Backend
+  intakt bleibt.
+sidebar:
+  order: 5
+  label: Phase 4 — Teardown
+i18n:
+  sourceHash: e7f39a0cb91f
+  translator: machine
+---
+
+import { Steps, Aside } from "@astrojs/starlight/components";
+
+Phase 4 entfernt alles, was der Plan erstellt hat. `terraform destroy` löscht die verwaltete `xcsh_dns_zone`
+(und ihre Einträge) über die F5 XC API und aktualisiert den Remote-State.
+
+<Aside type="caution">
+Die Zerstörung ist irreversibel und entfernt öffentliche DNS-Einträge für die Domain. Bestätigen Sie die Zieldomain und
+den Mandanten, bevor Sie fortfahren — die Anmeldeinformationen und Eingaben in Ihrer Umgebung entscheiden, was gelöscht wird.
+</Aside>
+
+## Zerstören
+
+<Steps>
+
+1. Bestätigen Sie, dass Ihre Umgebung auf den beabsichtigten Mandanten und die beabsichtigte Domain abzielt:
+
+   ```sh
+   echo "$XCSH_API_URL"
+   grep '^domain' terraform/terraform.tfvars
+   ```
+
+2. Überprüfen Sie, was zerstört werden soll:
+
+   ```sh
+   cd terraform
+   terraform plan -destroy
+   ```
+
+3. Zerstören Sie nach Überprüfung des Plans:
+
+   ```sh
+   terraform destroy
+   ```
+
+</Steps>
+
+## Entfernung überprüfen
+
+Bestätigen Sie, dass die Zone aus F5 XC entfernt wurde (erwarten Sie HTTP `404`):
+
+```bash
+curl -s -o /dev/null -w '%{http_code}\n' \
+  -H "Authorization: APIToken xF5XC_API_TOKENx" \
+  "xF5XC_API_URLx/api/config/dns/namespaces/system/dns_zones/xF5XC_DOMAINx"
+```
+
+Die öffentliche Namensauflösung wird beendet, sobald die delegierten Nameserver die Einträge entfernen.
+
+## Was verbleibt
+
+Das Azure-State-Backend (Ressourcengruppe, Speicherkonto, Container) wird durch
+`terraform destroy` **nicht** entfernt — es enthält den State und wird über mehrere Ausführungen hinweg wiederverwendet. Die State-Datei bleibt erhalten und verzeichnet nun eine leere Konfiguration. Entfernen Sie das Backend nur, wenn Sie die Umgebung vollständig außer Betrieb nehmen, mit der Azure CLI:
+
+```sh
+az group delete --name f5-sales-demo-tfstate --yes
+```
+
+Um neu aufzubauen, beginnen Sie erneut bei [Phase 1 — Build](/dns/demo/phase-1-build/).

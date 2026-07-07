@@ -1,0 +1,73 @@
+---
+title: المرحلة 2 — التحقق
+description: >-
+  تأكيد أن منطقة DNS في F5 Distributed Cloud تُحلَّل على الإنترنت العام، ومطابقة
+  مجموعة سجلات F5 XC، والتحقق من أن خطة Terraform غير متغيرة.
+sidebar:
+  order: 3
+  label: المرحلة 2 — التحقق
+i18n:
+  sourceHash: 57c1c28019b0
+  translator: machine
+---
+
+import { Steps, Aside } from "@astrojs/starlight/components";
+
+تؤكد المرحلة 2 أن المنطقة من [المرحلة 1](/dns/demo/phase-1-build/) تعمل بشكل مباشر: يتم تحليل السجلات علنًا،
+وتتطابق تهيئة F5 XC مع ما أعلنه Terraform، ويُفيد إعادة التخطيط بعدم وجود أي انحراف.
+
+## بوابة الجاهزية
+
+استعلم عن المنطقة عبر واجهة برمجة تطبيقات F5 XC وتأكد من وجود مجموعة السجلات المتوقعة. املأ
+العناصر النائبة من النموذج الموجود أعلى الصفحة، أو من ملف `.env`، أو من shell الخاص بك.
+
+```bash
+curl -s \
+  -H "Authorization: APIToken xF5XC_API_TOKENx" \
+  "xF5XC_API_URLx/api/config/dns/namespaces/system/dns_zones/xF5XC_DOMAINx" \
+  | jq '{
+    zone: .metadata.name,
+    group: .spec.primary.rr_set_group[0].metadata.name,
+    records: [.spec.primary.rr_set_group[0].rr_set[] | .a_record.name],
+    status: (if (.metadata.name != null) then "PASS" else "FAIL" end)
+  }'
+```
+
+تؤكد نتيجة `PASS` مع مجموعة `demo-records` وأسماء `www` / `app` / `api` صحة الجانب المتعلق بـ F5 XC.
+
+## التحليل العام
+
+تمت تفويض النطاق إلى F5 XC، لذا يتم تحليل السجلات على الإنترنت العام. تحقق من كل اسم:
+
+```bash
+for name in www app api; do
+  echo "$name.xF5XC_DOMAINx -> $(dig +short "$name.xF5XC_DOMAINx" A | tr '\n' ' ')"
+done
+```
+
+<Aside type="note">
+إذا كانت عناوين التوثيق الافتراضية وفق RFC 5737 (`203.0.113.x`) لا تزال مُستخدَمة، فسيُعيد التحليل
+تلك العناوين حتى لو لم يكن هناك أي استضافة فعلية — وهذا أمر متوقع في عرض توضيحي للتوثيق.
+استبدلها بأهداف حقيقية لخدمة حركة مرور مباشرة.
+</Aside>
+
+## الثبات عند إعادة التنفيذ
+
+يجب أن يُفيد التخطيط الثاني مقابل التهيئة غير المتغيرة بعدم وجود أي تغييرات:
+
+<Steps>
+
+1. أعد تشغيل الخطة:
+
+   ```sh
+   cd terraform
+   terraform plan
+   ```
+
+2. تأكد من أن المخرجات هي **`No changes. Your infrastructure matches the configuration.`**
+
+</Steps>
+
+في بيئة CI، ينطبق نفس الضمان: إعادة فتح طلب سحب لا يُغيّر محتويات `terraform/` يُنتج خطة فارغة.
+
+تابع إلى [المرحلة 3 — تجاوز الفشل](/dns/demo/phase-3-failover/).

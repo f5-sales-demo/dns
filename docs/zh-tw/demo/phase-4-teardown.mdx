@@ -1,0 +1,69 @@
+---
+title: 第四階段 — 拆除
+description: 在明確確認後，使用 Terraform 移除 F5 Distributed Cloud DNS 區域及其記錄，並保留 Azure 狀態後端。
+sidebar:
+  order: 5
+  label: 第四階段 — 拆除
+i18n:
+  sourceHash: e7f39a0cb91f
+  translator: machine
+---
+
+import { Steps, Aside } from "@astrojs/starlight/components";
+
+第四階段將移除計劃所建立的所有資源。`terraform destroy` 會透過 F5 XC API 刪除受管理的 `xcsh_dns_zone`
+（及其記錄），並更新遠端狀態。
+
+<Aside type="caution">
+拆除操作不可逆，且會移除該網域的公開 DNS 記錄。在繼續操作之前，請確認目標網域與
+租戶——您環境中的憑證與輸入值將決定哪些資源會被刪除。
+</Aside>
+
+## 拆除
+
+<Steps>
+
+1. 確認您的環境目標指向預期的租戶與網域：
+
+   ```sh
+   echo "$XCSH_API_URL"
+   grep '^domain' terraform/terraform.tfvars
+   ```
+
+2. 檢視即將被拆除的資源：
+
+   ```sh
+   cd terraform
+   terraform plan -destroy
+   ```
+
+3. 在檢視計劃後執行拆除：
+
+   ```sh
+   terraform destroy
+   ```
+
+</Steps>
+
+## 驗證移除結果
+
+確認區域已從 F5 XC 中消失（預期回應為 HTTP `404`）：
+
+```bash
+curl -s -o /dev/null -w '%{http_code}\n' \
+  -H "Authorization: APIToken xF5XC_API_TOKENx" \
+  "xF5XC_API_URLx/api/config/dns/namespaces/system/dns_zones/xF5XC_DOMAINx"
+```
+
+一旦委派的名稱伺服器移除記錄後，公開解析即會停止。
+
+## 保留的資源
+
+Azure 狀態後端（資源群組、儲存體帳戶、容器）**不會**被
+`terraform destroy` 移除——它持有狀態資訊，並可跨執行重複使用。狀態檔案會保留，此時記錄的是空白組態。僅在您完全淘汰該環境時，才使用 Azure CLI 移除後端：
+
+```sh
+az group delete --name f5-sales-demo-tfstate --yes
+```
+
+若要重新建置，請從[第一階段 — 建置](/dns/demo/phase-1-build/)重新開始。

@@ -1,0 +1,53 @@
+---
+title: Phase 3 — Failover
+description: >-
+  Gesundheitsgeprüftes DNS-Failover auf F5 Distributed Cloud mit einem
+  DNS-Lastverteiler — das geplante Design, ausstehend das dns-lb
+  Terraform-Modul.
+sidebar:
+  order: 4
+  label: Phase 3 — Failover
+i18n:
+  sourceHash: fb9b9857341b
+  translator: machine
+---
+
+import { Aside } from "@astrojs/starlight/components";
+
+Phase 3 fügt **gesundheitsgeprüftes Failover** auf der Zone aus
+[Phase 1](/dns/demo/phase-1-build/) hinzu: Ein F5 XC **DNS-Lastverteiler** gibt je nach Pool-Zustand
+unterschiedliche Antworten für einen Namen zurück, sodass der Datenverkehr automatisch zu einem
+gesunden Pool wechselt.
+
+<Aside type="caution" title="Ausstehend das dns-lb-Modul">
+Diese Phase ist noch nicht ausführbar. Sie hängt von einem `dns-lb` Terraform-Modul ab, das eine
+Folgeaufgabe zum aktuellen Plan ist und durch die Festlegung des `lb_record`-Übertragungsformats
+blockiert wird. Diese Seite dokumentiert das beabsichtigte Design, damit der Ablauf vollständig ist;
+die ausführbaren Schritte werden mit dem Modul bereitgestellt.
+</Aside>
+
+## Geplantes Design
+
+Der DNS-Lastverteiler-Stack besteht aus drei F5 XC-Ressourcen und einem Eintrag in der Zone:
+
+| Ressource | Rolle |
+| --- | --- |
+| `xcsh_dns_lb_health_check` | Prüft jedes Mitglied (HTTP, HTTPS, TCP, ICMP oder UDP), um den Pool-Zustand zu ermitteln |
+| `xcsh_dns_lb_pool` | Eine Gruppe von Mitgliedern mit einem Lastverteilungsmodus (`ROUND_ROBIN`, `PRIORITY`, …) und einem Verweis auf die Gesundheitsprüfung |
+| `xcsh_dns_load_balancer` | Regeln, die pro Anfrage einen Pool auswählen, mit einem Fallback-Pool |
+| `lb_record` (in `xcsh_dns_zone`) | Bindet einen Namen in der Zone an den DNS-Lastverteiler |
+
+Das `dns-lb`-Modul wird diese ausdrücken, und das Zone-Modul erhält einen `lb_record`-Eintrag, der
+auf den Lastverteiler verweist — sodass ein einzelnes `terraform apply` den gesamten Failover-Pfad
+aufbaut.
+
+## Geplante Demonstration
+
+Sobald das Modul veröffentlicht ist, wird die Failover-Demo Folgendes tun:
+
+1. Zwei Pools (primär und sekundär) hinter dem DNS-Lastverteiler mit einer Gesundheitsprüfung bereitstellen.
+2. Den lastverteilten Namen auflösen und bestätigen, dass er die Antwort des primären Pools zurückgibt.
+3. Den primären Pool in einen ungesunden Zustand versetzen und bestätigen, dass die Auflösung auf den sekundären Pool failover durchführt — das Bereitschaftsgate fragt `dig` ab, bis sich die Antwort ändert.
+4. Den primären Pool wiederherstellen und das Failback bestätigen.
+
+Fahren Sie bis dahin mit [Phase 4 — Abbau](/dns/demo/phase-4-teardown/) fort, um die Zone aus Phase 1 zu entfernen.

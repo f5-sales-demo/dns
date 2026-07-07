@@ -1,0 +1,74 @@
+---
+title: Fase 2 — Validar
+description: >-
+  Confirme que a zona DNS do F5 Distributed Cloud resolve na internet pública, o
+  conjunto de registros do F5 XC corresponde e o plano Terraform é idempotente.
+sidebar:
+  order: 3
+  label: Fase 2 — Validar
+i18n:
+  sourceHash: 57c1c28019b0
+  translator: machine
+---
+
+import { Steps, Aside } from "@astrojs/starlight/components";
+
+A Fase 2 confirma que a zona da [Fase 1](/dns/demo/phase-1-build/) está ativa: os registros resolvem publicamente,
+a configuração do F5 XC corresponde ao que o Terraform declarou e um novo plano não reporta desvios.
+
+## Critério de prontidão
+
+Consulte a zona por meio da API do F5 XC e confirme que o conjunto de registros esperado existe. Preencha os
+espaços reservados a partir do formulário no topo da página, de um arquivo `.env` ou do seu shell.
+
+```bash
+curl -s \
+  -H "Authorization: APIToken xF5XC_API_TOKENx" \
+  "xF5XC_API_URLx/api/config/dns/namespaces/system/dns_zones/xF5XC_DOMAINx" \
+  | jq '{
+    zone: .metadata.name,
+    group: .spec.primary.rr_set_group[0].metadata.name,
+    records: [.spec.primary.rr_set_group[0].rr_set[] | .a_record.name],
+    status: (if (.metadata.name != null) then "PASS" else "FAIL" end)
+  }'
+```
+
+Um resultado `PASS` com o grupo `demo-records` e os nomes `www` / `app` / `api` confirma o lado do F5 XC.
+
+## Resolução pública
+
+O domínio está delegado ao F5 XC, portanto os registros resolvem na internet pública. Verifique cada nome:
+
+```bash
+for name in www app api; do
+  echo "$name.xF5XC_DOMAINx -> $(dig +short "$name.xF5XC_DOMAINx" A | tr '\n' ' ')"
+done
+```
+
+<Aside type="note">
+Se os endereços de documentação padrão da RFC 5737 (`203.0.113.x`) ainda estiverem configurados, a resolução
+retornará esses endereços mesmo que nada esteja hospedado lá — isso é esperado para uma demonstração de documentação.
+Substitua-os por destinos reais para servir tráfego em produção.
+</Aside>
+
+## Idempotência
+
+Um segundo plano executado contra a configuração inalterada não deve reportar nenhuma alteração:
+
+<Steps>
+
+1. Execute o plano novamente:
+
+   ```sh
+   cd terraform
+   terraform plan
+   ```
+
+2. Confirme que a saída é **`No changes. Your infrastructure matches the configuration.`**
+
+</Steps>
+
+Em CI, a mesma garantia se aplica: reabrir um pull request que não altera `terraform/` produz
+um plano vazio.
+
+Continue para a [Fase 3 — Failover](/dns/demo/phase-3-failover/).

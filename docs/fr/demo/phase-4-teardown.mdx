@@ -1,0 +1,74 @@
+---
+title: Phase 4 — Démantèlement
+description: >-
+  Supprimez la zone DNS F5 Distributed Cloud et ses enregistrements avec
+  Terraform après confirmation explicite, en laissant le backend d'état Azure
+  intact.
+sidebar:
+  order: 5
+  label: Phase 4 — Démantèlement
+i18n:
+  sourceHash: e7f39a0cb91f
+  translator: machine
+---
+
+import { Steps, Aside } from "@astrojs/starlight/components";
+
+La Phase 4 supprime tout ce que le plan a créé. `terraform destroy` supprime la `xcsh_dns_zone` gérée
+(et ses enregistrements) via l'API F5 XC et met à jour l'état distant.
+
+<Aside type="caution">
+La destruction est irréversible et supprime les enregistrements DNS publics pour le domaine. Confirmez le domaine cible et
+le tenant avant de procéder — les identifiants et les entrées dans votre environnement déterminent ce qui sera supprimé.
+</Aside>
+
+## Destruction
+
+<Steps>
+
+1. Confirmez que votre environnement cible le tenant et le domaine prévus :
+
+   ```sh
+   echo "$XCSH_API_URL"
+   grep '^domain' terraform/terraform.tfvars
+   ```
+
+2. Examinez ce qui sera détruit :
+
+   ```sh
+   cd terraform
+   terraform plan -destroy
+   ```
+
+3. Détruisez après avoir examiné le plan :
+
+   ```sh
+   terraform destroy
+   ```
+
+</Steps>
+
+## Vérifier la suppression
+
+Confirmez que la zone a disparu de F5 XC (attendez HTTP `404`) :
+
+```bash
+curl -s -o /dev/null -w '%{http_code}\n' \
+  -H "Authorization: APIToken xF5XC_API_TOKENx" \
+  "xF5XC_API_URLx/api/config/dns/namespaces/system/dns_zones/xF5XC_DOMAINx"
+```
+
+La résolution publique s'arrête une fois que les serveurs de noms délégués suppriment les enregistrements.
+
+## Ce qui reste
+
+Le backend d'état Azure (groupe de ressources, compte de stockage, conteneur) **n'est pas** supprimé par
+`terraform destroy` — il conserve l'état et est réutilisé entre les exécutions. Le fichier d'état reste, enregistrant
+désormais une configuration vide. Ne supprimez le backend que lorsque vous retirez entièrement l'environnement,
+avec Azure CLI :
+
+```sh
+az group delete --name f5-sales-demo-tfstate --yes
+```
+
+Pour reconstruire, recommencez à [Phase 1 — Build](/dns/demo/phase-1-build/).

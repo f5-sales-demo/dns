@@ -1,0 +1,42 @@
+---
+title: 演示
+description: 在 F5 Distributed Cloud 上以 Terraform 驱动的四阶段 DNS 演练——构建、验证、故障转移、销毁。
+sidebar:
+  order: 1
+  label: 概述
+i18n:
+  sourceHash: d6cd5c3d82ae
+  translator: machine
+---
+
+import { Aside } from "@astrojs/starlight/components";
+
+本指南将引导您完成在 F5 Distributed Cloud 上以 Terraform 驱动的**完整 DNS 演练**。
+演练分为四个阶段，人工操作员或 AI 助手均可端到端执行。每个
+阶段均具有幂等性：重复执行将收敛至相同状态。
+
+## 演练阶段
+
+| 阶段 | 目标 |
+| --- | --- |
+| [第 1 阶段——构建](/dns/demo/phase-1-build/) | 使用 Terraform 部署主 DNS 区域；配置远程状态与 CI |
+| [第 2 阶段——验证](/dns/demo/phase-2-validate/) | 确认区域在公共互联网上可正常解析，且计划具有幂等性 |
+| [第 3 阶段——故障转移](/dns/demo/phase-3-failover/) | 添加带健康检查故障转移的 DNS 负载均衡器 *（待 DNS-LB 模块就绪）* |
+| [第 4 阶段——销毁](/dns/demo/phase-4-teardown/) | 在明确确认后销毁受管对象 |
+
+## 前提条件
+
+- **Terraform** ≥ 1.5。
+- **`f5-sales-demo/xcsh`** 提供程序 ≥ 3.61.15（首个包含 DNS 资源的发布版本），
+  从 Terraform 注册表解析——或通过 `dev_overrides` 使用本地构建版本。
+- 具有 `system` 命名空间访问权限的 **F5 XC API 令牌**。
+- 已登录并在订阅上具有贡献者权限的 **Azure CLI**，用于一次性状态
+  后端引导。
+
+<Aside type="caution">
+此处使用的域名已委托给 F5 XC，因此您创建的记录将在公共互联网上生效。
+请使用您拥有且打算管理的域名——该计划正是通过变量驱动，以便您可以指向
+自己的域名。
+</Aside>
+
+从[第 1 阶段——构建](/dns/demo/phase-1-build/)开始。

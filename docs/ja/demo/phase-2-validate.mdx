@@ -1,0 +1,69 @@
+---
+title: フェーズ 2 — 検証
+description: >-
+  F5 Distributed Cloud DNS ゾーンがパブリックインターネット上で解決されること、F5 XC レコードセットが一致していること、および
+  Terraform プランがべき等であることを確認します。
+sidebar:
+  order: 3
+  label: フェーズ 2 — 検証
+i18n:
+  sourceHash: 57c1c28019b0
+  translator: machine
+---
+
+import { Steps, Aside } from "@astrojs/starlight/components";
+
+フェーズ 2 では、[フェーズ 1](/dns/demo/phase-1-build/) で作成したゾーンが稼働中であることを確認します。レコードがパブリックに解決されること、F5 XC の設定が Terraform で宣言した内容と一致していること、および再プランによってドリフトが報告されないことを検証します。
+
+## 準備完了の確認
+
+F5 XC API を通じてゾーンをクエリし、期待されるレコードセットが存在することを確認します。ページ上部のフォーム、`.env` ファイル、またはシェルからプレースホルダーを入力してください。
+
+```bash
+curl -s \
+  -H "Authorization: APIToken xF5XC_API_TOKENx" \
+  "xF5XC_API_URLx/api/config/dns/namespaces/system/dns_zones/xF5XC_DOMAINx" \
+  | jq '{
+    zone: .metadata.name,
+    group: .spec.primary.rr_set_group[0].metadata.name,
+    records: [.spec.primary.rr_set_group[0].rr_set[] | .a_record.name],
+    status: (if (.metadata.name != null) then "PASS" else "FAIL" end)
+  }'
+```
+
+`demo-records` グループと `www` / `app` / `api` の各名前を伴う `PASS` が表示されれば、F5 XC 側の確認は完了です。
+
+## パブリック解決
+
+ドメインは F5 XC に委任されているため、レコードはパブリックインターネット上で解決されます。各名前を確認してください。
+
+```bash
+for name in www app api; do
+  echo "$name.xF5XC_DOMAINx -> $(dig +short "$name.xF5XC_DOMAINx" A | tr '\n' ' ')"
+done
+```
+
+<Aside type="note">
+デフォルトの RFC 5737 ドキュメント用アドレス（`203.0.113.x`）がそのまま使用されている場合、実際にホスティングされていなくてもそれらのアドレスが返されます。これはドキュメントデモとして想定された動作です。実際のトラフィックを提供するには、実際のターゲットに置き換えてください。
+</Aside>
+
+## べき等性
+
+変更されていない設定に対して再度プランを実行した場合、変更なしと報告される必要があります。
+
+<Steps>
+
+1. プランを再実行します。
+
+   ```sh
+   cd terraform
+   terraform plan
+   ```
+
+2. 出力が **`No changes. Your infrastructure matches the configuration.`** であることを確認します。
+
+</Steps>
+
+CI においても同様の保証が適用されます。`terraform/` を変更しないプルリクエストを再度開いた場合、空のプランが生成されます。
+
+[フェーズ 3 — フェイルオーバー](/dns/demo/phase-3-failover/) に進んでください。

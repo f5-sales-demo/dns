@@ -1,0 +1,40 @@
+---
+title: Overview
+description: How the F5 Distributed Cloud DNS use case is built — an xcsh-provider Terraform plan that manages a delegated DNS zone, with state in Azure Blob Storage and GitHub Actions CI.
+sidebar:
+  order: 1
+  label: Overview
+---
+
+import { Aside } from "@astrojs/starlight/components";
+
+This use case manages **authoritative DNS on F5 Distributed Cloud** with Terraform. A small,
+reusable plan creates a primary DNS zone and its records for a delegated domain, keeps its state in
+**Azure Blob Storage**, and runs plan-on-pull-request / apply-on-merge through **GitHub Actions**.
+
+## What it manages
+
+- An `xcsh_dns_zone` — an authoritative **primary** zone in the F5 XC `system` namespace, with A
+  records. The zone name is the delegated domain (a variable), so retargeting is a configuration
+  change, not a code change.
+- Remote Terraform state in Azure, so runs are shareable between an operator's machine and CI.
+
+## Architecture
+
+| Layer | Choice | Why |
+| --- | --- | --- |
+| Provider | `f5-sales-demo/xcsh` (Terraform registry) | Generated from the F5 XC OpenAPI; manages `xcsh_dns_zone` and the DNS load-balancer resources. Authenticates with an API token (`Authorization: APIToken <token>`). |
+| State backend | `azurerm` (Azure Blob Storage), access-key auth | Durable, shared state. Access-key auth is used because the subscription grants only Contributor, which cannot assign the *Storage Blob Data Contributor* role that keyless (OIDC / Azure AD) auth needs. |
+| Automation | GitHub Actions | Plan on every pull request, apply on merge to `main`. Backend coordinates and inputs come from repository **variables**; credentials from **secrets**. |
+
+<Aside type="note">
+All F5 XC DNS objects must live in the `system` namespace — the API rejects other namespaces. The
+plan enforces this with a variable validation rule.
+</Aside>
+
+## Where to start
+
+The [Demo](/dns/demo/) arc walks through the full lifecycle end-to-end: **Build** the zone with
+Terraform, **Validate** that it resolves, **Failover** with a DNS load balancer, and **Teardown**.
+Begin with [Phase 1 — Build](/dns/demo/phase-1-build/), which is a complete how-to for deploying the
+zone, including every Terraform file, the CI workflow, and the required variables and secrets.

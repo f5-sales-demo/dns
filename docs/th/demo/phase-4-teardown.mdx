@@ -1,0 +1,72 @@
+---
+title: เฟส 4 — การรื้อถอน
+description: >-
+  ลบ DNS zone ของ F5 Distributed Cloud และบันทึกต่าง ๆ ด้วย Terraform
+  หลังจากได้รับการยืนยันอย่างชัดเจน โดยที่ Azure state backend ยังคงอยู่
+sidebar:
+  order: 5
+  label: เฟส 4 — การรื้อถอน
+i18n:
+  sourceHash: e7f39a0cb91f
+  translator: machine
+---
+
+import { Steps, Aside } from "@astrojs/starlight/components";
+
+เฟส 4 จะลบทุกอย่างที่แผนได้สร้างขึ้น `terraform destroy` จะลบ `xcsh_dns_zone` ที่จัดการอยู่
+(และบันทึกต่าง ๆ ของมัน) ผ่าน F5 XC API และอัปเดต remote state
+
+<Aside type="caution">
+การรื้อถอนเป็นสิ่งที่ไม่สามารถย้อนกลับได้และจะลบบันทึก DNS สาธารณะของโดเมน ยืนยันโดเมนเป้าหมายและ
+tenant ก่อนดำเนินการ — ข้อมูลประจำตัวและข้อมูลนำเข้าในสภาพแวดล้อมของคุณจะเป็นตัวกำหนดสิ่งที่จะถูกลบ
+</Aside>
+
+## การรื้อถอน
+
+<Steps>
+
+1. ยืนยันว่าสภาพแวดล้อมของคุณกำหนดเป้าหมายไปยัง tenant และโดเมนที่ต้องการ:
+
+   ```sh
+   echo "$XCSH_API_URL"
+   grep '^domain' terraform/terraform.tfvars
+   ```
+
+2. ตรวจสอบสิ่งที่จะถูกลบ:
+
+   ```sh
+   cd terraform
+   terraform plan -destroy
+   ```
+
+3. ดำเนินการรื้อถอนหลังจากตรวจสอบแผนแล้ว:
+
+   ```sh
+   terraform destroy
+   ```
+
+</Steps>
+
+## ยืนยันการลบ
+
+ยืนยันว่า zone ถูกลบออกจาก F5 XC แล้ว (คาดว่าจะได้รับ HTTP `404`):
+
+```bash
+curl -s -o /dev/null -w '%{http_code}\n' \
+  -H "Authorization: APIToken xF5XC_API_TOKENx" \
+  "xF5XC_API_URLx/api/config/dns/namespaces/system/dns_zones/xF5XC_DOMAINx"
+```
+
+การแปลงชื่อสาธารณะจะหยุดทำงานเมื่อ nameservers ที่ได้รับมอบหมายลบบันทึกออก
+
+## สิ่งที่ยังคงเหลืออยู่
+
+Azure state backend (resource group, storage account, container) **ไม่ได้** ถูกลบโดย
+`terraform destroy` — มันเก็บ state และถูกนำมาใช้ซ้ำในแต่ละรอบ ไฟล์ state ยังคงอยู่ โดยบันทึก
+configuration ว่างเปล่าในปัจจุบัน ลบ backend เฉพาะเมื่อคุณกำลังยกเลิกสภาพแวดล้อมทั้งหมด ด้วย Azure CLI:
+
+```sh
+az group delete --name f5-sales-demo-tfstate --yes
+```
+
+หากต้องการสร้างใหม่ ให้เริ่มต้นที่ [เฟส 1 — การสร้าง](/dns/demo/phase-1-build/)

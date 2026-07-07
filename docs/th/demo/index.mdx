@@ -1,0 +1,43 @@
+---
+title: สาธิต
+description: >-
+  แบบฝึกหัด DNS สี่ขั้นตอนที่ขับเคลื่อนด้วย Terraform บน F5 Distributed Cloud —
+  สร้าง, ตรวจสอบ, เฟลโอเวอร์, ทำลาย
+sidebar:
+  order: 1
+  label: ภาพรวม
+i18n:
+  sourceHash: d6cd5c3d82ae
+  translator: machine
+---
+
+import { Aside } from "@astrojs/starlight/components";
+
+คู่มือนี้จะพาคุณผ่าน **แบบฝึกหัด DNS แบบครบวงจร** บน F5 Distributed Cloud ที่ขับเคลื่อนด้วย Terraform
+โครงสร้างแบ่งออกเป็นสี่ขั้นตอนที่ผู้ปฏิบัติงานหรือ AI assistant สามารถรันได้ตั้งแต่ต้นจนจบ แต่ละ
+ขั้นตอนเป็น idempotent: การรันซ้ำจะบรรจบสู่สถานะเดิมเสมอ
+
+## ขั้นตอนของแบบฝึกหัด
+
+| ขั้นตอน | เป้าหมาย |
+| --- | --- |
+| [ขั้นตอนที่ 1 — สร้าง](/dns/demo/phase-1-build/) | ติดตั้ง DNS zone หลักด้วย Terraform; เชื่อมต่อ remote state และ CI |
+| [ขั้นตอนที่ 2 — ตรวจสอบ](/dns/demo/phase-2-validate/) | ยืนยันว่า zone สามารถ resolve ได้บนอินเทอร์เน็ตสาธารณะและ plan เป็น idempotent |
+| [ขั้นตอนที่ 3 — เฟลโอเวอร์](/dns/demo/phase-3-failover/) | เพิ่ม DNS load balancer พร้อม failover ที่ตรวจสอบสุขภาพ *(รอการพัฒนาโมดูล DNS-LB)* |
+| [ขั้นตอนที่ 4 — ทำลาย](/dns/demo/phase-4-teardown/) | ลบ managed objects หลังจากยืนยันอย่างชัดเจน |
+
+## ข้อกำหนดเบื้องต้น
+
+- **Terraform** ≥ 1.5
+- provider **`f5-sales-demo/xcsh`** ≥ 3.61.15 (รุ่นแรกที่มาพร้อมกับ DNS resources)
+  ซึ่ง resolve จาก Terraform registry — หรือ local build ผ่าน `dev_overrides`
+- **F5 XC API token** ที่มีสิทธิ์เข้าถึง namespace `system`
+- **Azure CLI** ที่ลงชื่อเข้าใช้พร้อม Contributor บน subscription สำหรับการตั้งค่า state
+  backend bootstrap ครั้งเดียว
+
+<Aside type="caution">
+โดเมนที่ใช้ที่นี่ได้รับการ delegate ให้กับ F5 XC ดังนั้น record ที่คุณสร้างจะ resolve ได้บนอินเทอร์เน็ตสาธารณะ
+ใช้โดเมนที่คุณเป็นเจ้าของและตั้งใจจะจัดการ — plan ถูกขับเคลื่อนด้วยตัวแปรเพื่อให้คุณสามารถกำหนดเป้าหมายโดเมนของคุณเองได้
+</Aside>
+
+เริ่มต้นด้วย [ขั้นตอนที่ 1 — สร้าง](/dns/demo/phase-1-build/)

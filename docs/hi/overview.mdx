@@ -1,0 +1,46 @@
+---
+title: अवलोकन
+description: >-
+  F5 Distributed Cloud DNS उपयोग केस कैसे बनाया गया है — एक xcsh-provider
+  Terraform प्लान जो एक प्रत्यायोजित DNS ज़ोन प्रबंधित करता है, Azure Blob
+  Storage में स्टेट के साथ और GitHub Actions CI।
+sidebar:
+  order: 1
+  label: अवलोकन
+i18n:
+  sourceHash: 353ce3cf521f
+  translator: machine
+---
+
+import { Aside } from "@astrojs/starlight/components";
+
+यह उपयोग केस Terraform के साथ **F5 Distributed Cloud पर आधिकारिक DNS** प्रबंधित करता है। एक छोटा,
+पुन: उपयोग योग्य प्लान एक प्राथमिक DNS ज़ोन और एक प्रत्यायोजित डोमेन के लिए उसके रिकॉर्ड बनाता है, अपनी स्टेट
+**Azure Blob Storage** में रखता है, और **GitHub Actions** के माध्यम से plan-on-pull-request / apply-on-merge चलाता है।
+
+## यह क्या प्रबंधित करता है
+
+- एक `xcsh_dns_zone` — F5 XC `system` नेमस्पेस में एक आधिकारिक **प्राथमिक** ज़ोन, A
+  रिकॉर्ड के साथ। ज़ोन का नाम प्रत्यायोजित डोमेन (एक वेरिएबल) है, इसलिए पुनः लक्षित करना एक कॉन्फ़िगरेशन
+  परिवर्तन है, कोड परिवर्तन नहीं।
+- Azure में रिमोट Terraform स्टेट, ताकि रन किसी ऑपरेटर की मशीन और CI के बीच साझा किए जा सकें।
+
+## आर्किटेक्चर
+
+| परत | चयन | क्यों |
+| --- | --- | --- |
+| प्रोवाइडर | `f5-sales-demo/xcsh` (Terraform registry) | F5 XC OpenAPI से उत्पन्न; `xcsh_dns_zone` और DNS लोड-बैलेंसर संसाधन प्रबंधित करता है। एक API टोकन (`Authorization: APIToken <token>`) से प्रमाणीकरण करता है। |
+| स्टेट बैकएंड | `azurerm` (Azure Blob Storage), access-key auth | टिकाऊ, साझा स्टेट। Access-key auth का उपयोग किया जाता है क्योंकि सब्सक्रिप्शन केवल Contributor अनुदान देता है, जो *Storage Blob Data Contributor* भूमिका असाइन नहीं कर सकता जिसकी keyless (OIDC / Azure AD) auth को आवश्यकता है। |
+| स्वचालन | GitHub Actions | प्रत्येक pull request पर Plan, `main` में merge पर apply। बैकएंड कोऑर्डिनेट्स और इनपुट रिपॉजिटरी **variables** से आते हैं; क्रेडेंशियल **secrets** से। |
+
+<Aside type="note">
+सभी F5 XC DNS ऑब्जेक्ट्स `system` नेमस्पेस में होने चाहिए — API अन्य नेमस्पेस को अस्वीकार करता है। प्लान
+एक वेरिएबल वैलिडेशन नियम के साथ इसे लागू करता है।
+</Aside>
+
+## कहाँ से शुरू करें
+
+[Demo](/dns/demo/) arc पूरे जीवनचक्र को end-to-end दर्शाता है: Terraform के साथ ज़ोन **Build** करें,
+**Validate** करें कि यह रिज़ॉल्व होता है, DNS लोड बैलेंसर के साथ **Failover** करें, और **Teardown** करें।
+[Phase 1 — Build](/dns/demo/phase-1-build/) से शुरू करें, जो ज़ोन को deploy करने के लिए एक संपूर्ण how-to है,
+जिसमें प्रत्येक Terraform फ़ाइल, CI वर्कफ़्लो, और आवश्यक variables और secrets शामिल हैं।

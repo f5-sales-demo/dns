@@ -1,0 +1,74 @@
+---
+title: Fase 4 — Desmantelamiento
+description: >-
+  Elimine la zona DNS de F5 Distributed Cloud y sus registros con Terraform tras
+  confirmación explícita, dejando intacto el backend de estado de Azure.
+sidebar:
+  order: 5
+  label: Fase 4 — Desmantelamiento
+i18n:
+  sourceHash: e7f39a0cb91f
+  translator: machine
+---
+
+import { Steps, Aside } from "@astrojs/starlight/components";
+
+La Fase 4 elimina todo lo que el plan creó. `terraform destroy` borra la `xcsh_dns_zone` gestionada
+(y sus registros) a través de la API de F5 XC y actualiza el estado remoto.
+
+<Aside type="caution">
+La destrucción es irreversible y elimina los registros DNS públicos del dominio. Confirme el dominio
+de destino y el tenant antes de continuar — las credenciales y entradas en su entorno determinan qué
+se eliminará.
+</Aside>
+
+## Destruir
+
+<Steps>
+
+1. Confirme que su entorno apunta al tenant y dominio deseados:
+
+   ```sh
+   echo "$XCSH_API_URL"
+   grep '^domain' terraform/terraform.tfvars
+   ```
+
+2. Revise lo que será destruido:
+
+   ```sh
+   cd terraform
+   terraform plan -destroy
+   ```
+
+3. Destruya tras revisar el plan:
+
+   ```sh
+   terraform destroy
+   ```
+
+</Steps>
+
+## Verificar la eliminación
+
+Confirme que la zona ha desaparecido de F5 XC (se espera HTTP `404`):
+
+```bash
+curl -s -o /dev/null -w '%{http_code}\n' \
+  -H "Authorization: APIToken xF5XC_API_TOKENx" \
+  "xF5XC_API_URLx/api/config/dns/namespaces/system/dns_zones/xF5XC_DOMAINx"
+```
+
+La resolución pública se detiene una vez que los servidores de nombres delegados eliminan los registros.
+
+## Qué permanece
+
+El backend de estado de Azure (grupo de recursos, cuenta de almacenamiento, contenedor) **no** es
+eliminado por `terraform destroy` — conserva el estado y se reutiliza entre ejecuciones. El archivo
+de estado permanece, registrando ahora una configuración vacía. Elimine el backend únicamente cuando
+esté retirando el entorno por completo, con la CLI de Azure:
+
+```sh
+az group delete --name f5-sales-demo-tfstate --yes
+```
+
+Para reconstruir, comience nuevamente en [Fase 1 — Construcción](/dns/demo/phase-1-build/).

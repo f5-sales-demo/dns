@@ -1,0 +1,70 @@
+---
+title: เฟส 2 — ตรวจสอบความถูกต้อง
+description: >-
+  ยืนยันว่า DNS zone ของ F5 Distributed Cloud
+  สามารถแก้ไขได้บนอินเทอร์เน็ตสาธารณะ ชุดระเบียน F5 XC ตรงกัน และแผน Terraform
+  เป็นแบบ idempotent
+sidebar:
+  order: 3
+  label: เฟส 2 — ตรวจสอบความถูกต้อง
+i18n:
+  sourceHash: 57c1c28019b0
+  translator: machine
+---
+
+import { Steps, Aside } from "@astrojs/starlight/components";
+
+เฟส 2 ยืนยันว่า zone จาก [เฟส 1](/dns/demo/phase-1-build/) นั้นใช้งานได้จริง: ระเบียนสามารถแก้ไขได้แบบสาธารณะ การกำหนดค่า F5 XC ตรงกับที่ Terraform ประกาศไว้ และการวางแผนซ้ำไม่พบความแตกต่าง
+
+## เงื่อนไขความพร้อม
+
+สอบถาม zone ผ่าน F5 XC API และยืนยันว่าชุดระเบียนที่คาดหวังมีอยู่ กรอกข้อมูลในช่องว่างจากแบบฟอร์มด้านบนของหน้า ไฟล์ `.env` หรือ shell ของคุณ
+
+```bash
+curl -s \
+  -H "Authorization: APIToken xF5XC_API_TOKENx" \
+  "xF5XC_API_URLx/api/config/dns/namespaces/system/dns_zones/xF5XC_DOMAINx" \
+  | jq '{
+    zone: .metadata.name,
+    group: .spec.primary.rr_set_group[0].metadata.name,
+    records: [.spec.primary.rr_set_group[0].rr_set[] | .a_record.name],
+    status: (if (.metadata.name != null) then "PASS" else "FAIL" end)
+  }'
+```
+
+ผล `PASS` พร้อมกลุ่ม `demo-records` และชื่อ `www` / `app` / `api` ยืนยันฝั่ง F5 XC
+
+## การแก้ไขชื่อแบบสาธารณะ
+
+โดเมนถูกมอบหมายให้กับ F5 XC ดังนั้นระเบียนจึงสามารถแก้ไขได้บนอินเทอร์เน็ตสาธารณะ ตรวจสอบแต่ละชื่อ:
+
+```bash
+for name in www app api; do
+  echo "$name.xF5XC_DOMAINx -> $(dig +short "$name.xF5XC_DOMAINx" A | tr '\n' ' ')"
+done
+```
+
+<Aside type="note">
+หากที่อยู่เอกสาร RFC 5737 ตามค่าเริ่มต้น (`203.0.113.x`) ยังคงใช้อยู่ การแก้ไขชื่อจะคืนค่าที่อยู่เหล่านั้นแม้ว่าจะไม่มีสิ่งใดโฮสต์อยู่ที่นั่น — นั่นเป็นสิ่งที่คาดหวังสำหรับการสาธิตเอกสาร แทนที่ด้วยเป้าหมายจริงเพื่อให้บริการทราฟฟิกจริง
+</Aside>
+
+## Idempotency
+
+การวางแผนครั้งที่สองกับการกำหนดค่าที่ไม่เปลี่ยนแปลงต้องรายงานว่าไม่มีการเปลี่ยนแปลง:
+
+<Steps>
+
+1. รันแผนใหม่:
+
+   ```sh
+   cd terraform
+   terraform plan
+   ```
+
+2. ยืนยันว่าผลลัพธ์คือ **`No changes. Your infrastructure matches the configuration.`**
+
+</Steps>
+
+ใน CI การรับประกันเดียวกันนี้ยังคงใช้ได้: การเปิด pull request ที่ไม่เปลี่ยนแปลง `terraform/` ซ้ำจะสร้างแผนที่ว่างเปล่า
+
+ดำเนินการต่อที่ [เฟส 3 — Failover](/dns/demo/phase-3-failover/)

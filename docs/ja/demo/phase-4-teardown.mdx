@@ -1,0 +1,68 @@
+---
+title: フェーズ 4 — 破棄
+description: >-
+  明示的な確認後、Terraform を使用して F5 Distributed Cloud DNS ゾーンとそのレコードを削除します。Azure
+  ステートバックエンドはそのまま残ります。
+sidebar:
+  order: 5
+  label: フェーズ 4 — 破棄
+i18n:
+  sourceHash: e7f39a0cb91f
+  translator: machine
+---
+
+import { Steps, Aside } from "@astrojs/starlight/components";
+
+フェーズ 4 では、プランで作成されたすべてのリソースを削除します。`terraform destroy` は、F5 XC API を通じて管理対象の `xcsh_dns_zone`（およびそのレコード）を削除し、リモートステートを更新します。
+
+<Aside type="caution">
+破棄は元に戻せず、ドメインのパブリック DNS レコードが削除されます。処理を進める前に、対象のドメインとテナントを確認してください — 環境内の認証情報と入力によって、削除される内容が決まります。
+</Aside>
+
+## 破棄
+
+<Steps>
+
+1. 環境が意図したテナントとドメインを対象としていることを確認します：
+
+   ```sh
+   echo "$XCSH_API_URL"
+   grep '^domain' terraform/terraform.tfvars
+   ```
+
+2. 破棄される内容を確認します：
+
+   ```sh
+   cd terraform
+   terraform plan -destroy
+   ```
+
+3. プランを確認した後に破棄を実行します：
+
+   ```sh
+   terraform destroy
+   ```
+
+</Steps>
+
+## 削除の確認
+
+F5 XC からゾーンが削除されたことを確認します（HTTP `404` が返ることを想定）：
+
+```bash
+curl -s -o /dev/null -w '%{http_code}\n' \
+  -H "Authorization: APIToken xF5XC_API_TOKENx" \
+  "xF5XC_API_URLx/api/config/dns/namespaces/system/dns_zones/xF5XC_DOMAINx"
+```
+
+委任されたネームサーバーがレコードを削除すると、パブリック名前解決も停止します。
+
+## 残存するもの
+
+Azure ステートバックエンド（リソースグループ、ストレージアカウント、コンテナー）は `terraform destroy` では削除**されません** — ステートを保持しており、実行をまたいで再利用されます。ステートファイルは残り、現在は空の構成が記録されています。バックエンドは、環境を完全に廃止する場合にのみ、Azure CLI を使用して削除してください：
+
+```sh
+az group delete --name f5-sales-demo-tfstate --yes
+```
+
+再構築する場合は、[フェーズ 1 — ビルド](/dns/demo/phase-1-build/) から再度開始してください。

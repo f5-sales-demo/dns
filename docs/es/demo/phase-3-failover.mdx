@@ -1,0 +1,51 @@
+---
+title: Fase 3 — Conmutación por error
+description: >-
+  Conmutación por error DNS con verificación de estado en F5 Distributed Cloud
+  con un balanceador de carga DNS — el diseño planificado, pendiente del módulo
+  dns-lb de Terraform.
+sidebar:
+  order: 4
+  label: Fase 3 — Conmutación por error
+i18n:
+  sourceHash: fb9b9857341b
+  translator: machine
+---
+
+import { Aside } from "@astrojs/starlight/components";
+
+La Fase 3 agrega **conmutación por error con verificación de estado** sobre la zona de
+[Fase 1](/dns/demo/phase-1-build/): un **balanceador de carga DNS** de F5 XC devuelve respuestas distintas para un
+nombre según el estado del pool, de modo que el tráfico se mueve automáticamente hacia un pool saludable.
+
+<Aside type="caution" title="Pendiente del módulo dns-lb">
+Esta fase aún no es ejecutable. Depende de un módulo `dns-lb` de Terraform que es un seguimiento del
+plan actual, bloqueado en la fijación del formato de conexión `lb_record`. Esta página documenta el diseño
+previsto para que el arco esté completo; los pasos ejecutables se incluirán con el módulo.
+</Aside>
+
+## Diseño planificado
+
+La pila del balanceador de carga DNS consta de tres recursos de F5 XC más un registro en la zona:
+
+| Recurso | Función |
+| --- | --- |
+| `xcsh_dns_lb_health_check` | Sondea cada miembro (HTTP, HTTPS, TCP, ICMP o UDP) para determinar el estado del pool |
+| `xcsh_dns_lb_pool` | Un conjunto de miembros con un modo de balanceo de carga (`ROUND_ROBIN`, `PRIORITY`, …) y una referencia a la verificación de estado |
+| `xcsh_dns_load_balancer` | Reglas que seleccionan un pool por solicitud, con un pool de respaldo |
+| `lb_record` (en `xcsh_dns_zone`) | Vincula un nombre en la zona al balanceador de carga DNS |
+
+El módulo `dns-lb` expresará estos recursos, y el módulo de zona incorporará una entrada `lb_record` que apunta
+al balanceador de carga — de modo que un único `terraform apply` construye toda la ruta de conmutación por error.
+
+## Demostración planificada
+
+Una vez que el módulo esté disponible, la demostración de conmutación por error:
+
+1. Desplegará dos pools (primario y secundario) detrás del balanceador de carga DNS, con una verificación de estado.
+2. Resolverá el nombre balanceado y confirmará que devuelve la respuesta del pool primario.
+3. Dejará el primario en estado no saludable y confirmará que la resolución conmuta al secundario — la puerta de preparación
+   ejecuta `dig` en bucle hasta que la respuesta cambie.
+4. Restaurará el primario y confirmará la reversión.
+
+Hasta entonces, continúe con [Fase 4 — Eliminación](/dns/demo/phase-4-teardown/) para eliminar la zona de la Fase 1.

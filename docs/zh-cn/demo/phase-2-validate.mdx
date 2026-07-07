@@ -1,0 +1,67 @@
+---
+title: 第二阶段 — 验证
+description: 确认 F5 Distributed Cloud DNS 区域在公共互联网上可解析，F5 XC 记录集匹配，并且 Terraform 计划具有幂等性。
+sidebar:
+  order: 3
+  label: 第二阶段 — 验证
+i18n:
+  sourceHash: 57c1c28019b0
+  translator: machine
+---
+
+import { Steps, Aside } from "@astrojs/starlight/components";
+
+第二阶段确认来自[第一阶段](/dns/demo/phase-1-build/)的区域已上线：记录可公开解析，F5 XC 配置与 Terraform 声明的内容一致，并且重新执行计划时不报告任何偏差。
+
+## 就绪检查
+
+通过 F5 XC API 查询区域，并确认预期的记录集存在。从页面顶部的表单、`.env` 文件或您的 Shell 中填写占位符。
+
+```bash
+curl -s \
+  -H "Authorization: APIToken xF5XC_API_TOKENx" \
+  "xF5XC_API_URLx/api/config/dns/namespaces/system/dns_zones/xF5XC_DOMAINx" \
+  | jq '{
+    zone: .metadata.name,
+    group: .spec.primary.rr_set_group[0].metadata.name,
+    records: [.spec.primary.rr_set_group[0].rr_set[] | .a_record.name],
+    status: (if (.metadata.name != null) then "PASS" else "FAIL" end)
+  }'
+```
+
+返回 `PASS` 并显示 `demo-records` 组以及 `www` / `app` / `api` 名称，即可确认 F5 XC 侧配置正确。
+
+## 公共解析
+
+该域名已委托给 F5 XC，因此记录可在公共互联网上解析。逐一检查每个名称：
+
+```bash
+for name in www app api; do
+  echo "$name.xF5XC_DOMAINx -> $(dig +short "$name.xF5XC_DOMAINx" A | tr '\n' ' ')"
+done
+```
+
+<Aside type="note">
+如果默认的 RFC 5737 文档地址（`203.0.113.x`）仍然存在，解析将返回这些地址，即使该地址上并未托管任何内容——这对于文档演示而言是预期行为。如需提供实际流量，请将其替换为真实目标地址。
+</Aside>
+
+## 幂等性
+
+对未更改的配置执行第二次计划，必须报告无变更：
+
+<Steps>
+
+1. 重新运行计划：
+
+   ```sh
+   cd terraform
+   terraform plan
+   ```
+
+2. 确认输出为 **`No changes. Your infrastructure matches the configuration.`**
+
+</Steps>
+
+在 CI 中，同样的保证成立：重新打开一个未更改 `terraform/` 的 Pull Request 将产生空计划。
+
+继续前往[第三阶段 — 故障切换](/dns/demo/phase-3-failover/)。
