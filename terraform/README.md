@@ -48,7 +48,7 @@ once to configure the `azurerm` backend.
 
 ### Configuration (nothing environment-specific is hardcoded)
 
-No environment values live in the `.tf` files. Supply them at run time:
+No environment values live in the `.tf` files. Supply them at runtime:
 
 | Value | CI source | Local source |
 | --- | --- | --- |
