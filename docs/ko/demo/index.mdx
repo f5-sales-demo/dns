@@ -1,11 +1,11 @@
 ---
 title: 데모
-description: 'F5 Distributed Cloud에서 Terraform으로 구동되는 4단계 DNS 실습 — 빌드, 검증, 페일오버, 삭제.'
+description: 'F5 Distributed Cloud에서 Terraform으로 구동되는 4단계 DNS 실습 — 빌드, 검증, 장애 조치, 정리.'
 sidebar:
   order: 1
   label: 개요
 i18n:
-  sourceHash: d6cd5c3d82ae
+  sourceHash: 28584ff7eba9
   translator: machine
 ---
 
@@ -13,28 +13,28 @@ import { Aside } from "@astrojs/starlight/components";
 
 이 가이드는 Terraform으로 구동되는 F5 Distributed Cloud의 **완전한 DNS 실습**을 안내합니다.
 사람 운영자 또는 AI 어시스턴트가 처음부터 끝까지 실행할 수 있는 4단계로 구성되어 있습니다. 각
-단계는 멱등성을 가집니다: 재실행 시 동일한 상태로 수렴합니다.
+단계는 멱등성을 가집니다. 즉, 다시 실행하더라도 동일한 상태로 수렴됩니다.
 
 ## 실습 단계
 
 | 단계 | 목표 |
 | --- | --- |
-| [1단계 — 빌드](/dns/demo/phase-1-build/) | Terraform으로 기본 DNS 영역 배포; 원격 상태 및 CI 연결 |
-| [2단계 — 검증](/dns/demo/phase-2-validate/) | 공용 인터넷에서 영역이 올바르게 확인되는지 및 플랜의 멱등성 확인 |
-| [3단계 — 페일오버](/dns/demo/phase-3-failover/) | 헬스 체크 기반 페일오버가 있는 DNS 부하 분산기 추가 *(DNS-LB 모듈 대기 중)* |
-| [4단계 — 삭제](/dns/demo/phase-4-teardown/) | 명시적 확인 후 관리 대상 객체 삭제 |
+| [1단계 — 빌드](/dns/demo/phase-1-build/) | Terraform으로 기본 DNS 영역 배포, 원격 상태 및 CI 연결 |
+| [2단계 — 검증](/dns/demo/phase-2-validate/) | 공용 인터넷에서 영역이 정상적으로 확인되고 플랜이 멱등성을 가지는지 확인 |
+| [3단계 — 장애 조치](/dns/demo/phase-3-failover/) | 상태 확인 기반 장애 조치를 갖춘 DNS 부하 분산 장치 추가 *(DNS-LB 모듈 보류 중)* |
+| [4단계 — 정리](/dns/demo/phase-4-teardown/) | 명시적 확인 후 관리되는 객체 삭제 |
 
 ## 사전 요구 사항
 
 - **Terraform** ≥ 1.5.
-- **`f5-sales-demo/xcsh`** 프로바이더 ≥ 3.61.15 (DNS 리소스를 제공하는 첫 번째 릴리스),
-  Terraform 레지스트리에서 확인 — 또는 `dev_overrides`를 통한 로컬 빌드.
+- **`f5-sales-demo/xcsh`** 프로바이더 ≥ 3.62.0 (시스템 전용 네임스페이스는 자동으로 기본값 설정),
+  Terraform 레지스트리에서 확인하거나 `dev_overrides`를 통한 로컬 빌드로 사용 가능.
 - `system` 네임스페이스에 접근 권한이 있는 **F5 XC API 토큰**.
-- 구독에서 Contributor 권한으로 로그인된 **Azure CLI** (일회성 상태 백엔드 부트스트랩용).
+- 일회성 상태 백엔드 부트스트랩을 위해 구독에서 Contributor 권한으로 로그인된 **Azure CLI**.
 
 <Aside type="caution">
-여기서 사용된 도메인은 F5 XC에 위임되어 있으므로, 생성한 레코드는 공용 인터넷에서 확인됩니다.
-본인이 소유하고 관리하려는 도메인을 사용하십시오 — 플랜은 정확히 이 목적을 위해 변수 기반으로 설계되어 있어 사용자 자신의 도메인을 대상으로 지정할 수 있습니다.
+여기서 사용하는 도메인은 F5 XC에 위임되어 있으므로, 생성한 레코드는 공용 인터넷에서 확인됩니다.
+본인이 소유하고 관리하려는 도메인을 사용하십시오 — 플랜은 본인의 도메인을 대상으로 설정할 수 있도록 변수 기반으로 설계되어 있습니다.
 </Aside>
 
-[1단계 — 빌드](/dns/demo/phase-1-build/)부터 시작하십시오.
+[1단계 — 빌드](/dns/demo/phase-1-build/)에서 시작하십시오.

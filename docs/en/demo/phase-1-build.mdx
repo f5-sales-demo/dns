@@ -30,8 +30,8 @@ The plan lives under `terraform/`: a thin root module that wires inputs into a `
 
 ### versions.tf
 
-Pins Terraform and the provider. The provider constraint is `>= 3.61.15` — the first registry release
-that ships the DNS resources.
+Pins Terraform and the provider. The provider constraint is `>= 3.62.0` — the release where
+system-only DNS resources default their namespace automatically.
 
 ```hcl
 terraform {
@@ -40,10 +40,10 @@ terraform {
   required_providers {
     xcsh = {
       source = "f5-sales-demo/xcsh"
-      # >= 3.61.16: the namespace attribute for system-only DNS resources defaults
+      # >= 3.62.0: the namespace attribute for system-only DNS resources defaults
       # to "system" (spec-driven), so it can be omitted. Locally the provider is
       # consumed via dev_overrides, which ignores this constraint.
-      version = ">= 3.61.16"
+      version = ">= 3.62.0"
     }
   }
 }

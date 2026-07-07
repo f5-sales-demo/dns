@@ -1,13 +1,13 @@
 ---
 title: Demo
 description: >-
-  Un esercizio DNS in quattro fasi, gestito da Terraform su F5 Distributed Cloud
-  — Costruzione, Validazione, Failover, Smantellamento.
+  Un esercizio DNS in quattro fasi, basato su Terraform su F5 Distributed Cloud
+  — Build, Validate, Failover, Teardown.
 sidebar:
   order: 1
   label: Panoramica
 i18n:
-  sourceHash: d6cd5c3d82ae
+  sourceHash: 28584ff7eba9
   translator: machine
 ---
 
@@ -21,23 +21,24 @@ fase è idempotente: rieseguirla converge allo stesso stato.
 
 | Fase | Obiettivo |
 | --- | --- |
-| [Fase 1 — Costruzione](/dns/demo/phase-1-build/) | Distribuire la zona DNS primaria con Terraform; configurare lo stato remoto e la CI |
-| [Fase 2 — Validazione](/dns/demo/phase-2-validate/) | Confermare che la zona si risolve su Internet pubblico e che il piano è idempotente |
-| [Fase 3 — Failover](/dns/demo/phase-3-failover/) | Aggiungere un bilanciatore del carico DNS con failover verificato tramite controlli di integrità *(in attesa del modulo DNS-LB)* |
-| [Fase 4 — Smantellamento](/dns/demo/phase-4-teardown/) | Eliminare gli oggetti gestiti dopo conferma esplicita |
+| [Fase 1 — Build](/dns/demo/phase-1-build/) | Distribuire la zona DNS primaria con Terraform; configurare lo stato remoto e la CI |
+| [Fase 2 — Validate](/dns/demo/phase-2-validate/) | Verificare che la zona si risolva sulla rete internet pubblica e che il piano sia idempotente |
+| [Fase 3 — Failover](/dns/demo/phase-3-failover/) | Aggiungere un bilanciatore del carico DNS con failover controllato dallo stato di salute *(in attesa del modulo DNS-LB)* |
+| [Fase 4 — Teardown](/dns/demo/phase-4-teardown/) | Eliminare gli oggetti gestiti dopo conferma esplicita |
 
 ## Prerequisiti
 
 - **Terraform** ≥ 1.5.
-- Il provider **`f5-sales-demo/xcsh`** ≥ 3.61.15 (la prima versione che include le risorse DNS),
-  risolto dal registro Terraform — oppure una build locale tramite `dev_overrides`.
+- Il provider **`f5-sales-demo/xcsh`** ≥ 3.62.0 (i namespace di sola gestione di sistema vengono configurati automaticamente per impostazione predefinita),
+  risolto dal registro Terraform — o una build locale tramite `dev_overrides`.
 - Un **token API F5 XC** con accesso al namespace `system`.
-- La **Azure CLI**, autenticata con il ruolo Contributor sulla sottoscrizione, per il bootstrap
-  del backend di stato eseguito una sola volta.
+- L'**Azure CLI**, autenticato con il ruolo Contributor sulla sottoscrizione, per il bootstrap una-tantum del
+  backend di stato.
 
 <Aside type="caution">
-Il dominio utilizzato in questo contesto è delegato a F5 XC, quindi i record creati si risolvono su Internet pubblico.
-Utilizzare un dominio di propria titolarità che si intende gestire — il piano è basato su variabili proprio per consentire di puntare al proprio dominio.
+Il dominio utilizzato qui è delegato a F5 XC, pertanto i record creati vengono risolti sulla rete internet pubblica.
+Utilizzare un dominio di propria titolarità che si intende gestire — il piano è basato su variabili proprio per consentire di puntare al
+proprio dominio.
 </Aside>
 
-Iniziare con la [Fase 1 — Costruzione](/dns/demo/phase-1-build/).
+Iniziare con la [Fase 1 — Build](/dns/demo/phase-1-build/).
