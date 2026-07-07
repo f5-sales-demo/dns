@@ -1,0 +1,60 @@
+---
+name: Terraform
+
+# Plan on PRs, apply on merge to main. State lives in Azure Blob Storage
+# (azurerm backend, access-key auth); the xcsh provider authenticates to the
+# production F5 XC tenant. All credentials come from repo secrets.
+on:
+  pull_request:
+    branches: [main]
+    paths: ['terraform/**', '.github/workflows/terraform.yml']
+  push:
+    branches: [main]
+    paths: ['terraform/**']
+
+permissions:
+  contents: read
+
+# Serialize state-mutating runs so no two applies race on the shared state blob.
+concurrency:
+  group: terraform-state
+  cancel-in-progress: false
+
+env:
+  # azurerm backend auth (storage account access key).
+  ARM_ACCESS_KEY: ${{ secrets.ARM_ACCESS_KEY }}
+  # xcsh provider auth (production tenant).
+  XCSH_API_URL: ${{ secrets.XCSH_API_URL }}
+  XCSH_API_TOKEN: ${{ secrets.XCSH_API_TOKEN }}
+  TF_IN_AUTOMATION: 'true'
+
+jobs:
+  terraform:
+    name: ${{ github.event_name == 'push' && 'apply' || 'plan' }}
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: terraform
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v4
+
+      - name: Init
+        run: terraform init -input=false
+
+      - name: Format check
+        run: terraform fmt -check -recursive
+
+      - name: Validate
+        run: terraform validate -no-color
+
+      - name: Plan
+        if: github.event_name == 'pull_request'
+        run: terraform plan -input=false -no-color
+
+      - name: Apply
+        if: github.event_name == 'push'
+        run: terraform apply -input=false -auto-approve -no-color
