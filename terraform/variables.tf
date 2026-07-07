@@ -10,9 +10,8 @@ variable "namespace" {
 }
 
 variable "domain" {
-  description = "DNS zone FQDN. f5-sales-demo.com is our delegated, pre-release test domain in the production tenant."
+  description = "DNS zone FQDN (required; supplied via TF_VAR_domain / a GitHub Actions variable / tfvars — not hardcoded). Our delegated, prerelease test domain in the production tenant."
   type        = string
-  default     = "f5-sales-demo.com"
 }
 
 variable "labels" {

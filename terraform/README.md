@@ -2,8 +2,8 @@
 
 Terraform plan that provisions the F5 Distributed Cloud DNS demo using the
 [`terraform-provider-xcsh`](https://github.com/f5-sales-demo/terraform-provider-xcsh)
-provider. It targets the production tenant against `f5-sales-demo.com` — our dedicated,
-delegated, pre-release test domain — with remote state in Azure Blob Storage.
+provider. It targets the production tenant against a dedicated, delegated, prerelease test
+domain, with remote state in Azure Blob Storage.
 
 ## Layout
 
@@ -46,22 +46,29 @@ RC
 Under `dev_overrides` the provider is not downloaded, but `terraform init` is still required
 once to configure the `azurerm` backend.
 
-### Credentials (never committed)
+### Configuration (nothing environment-specific is hardcoded)
 
-Export the F5 XC provider credentials and the Azure state backend key into the environment:
+No environment values live in the `.tf` files. Supply them at run time:
+
+| Value | CI source | Local source |
+| --- | --- | --- |
+| Backend coords (`resource_group_name`, `storage_account_name`, `container_name`, `key`) | GitHub **variables** `TFSTATE_*`, passed via `-backend-config` | `backend.hcl` (copy `backend.hcl.example`; gitignored) |
+| `domain`, `namespace` | GitHub **variables** `DNS_DOMAIN` / `DNS_NAMESPACE`, as `TF_VAR_*` | `terraform.tfvars` (copy the example; gitignored) or `TF_VAR_*` |
+| `ARM_ACCESS_KEY` (state auth) | GitHub **secret** | `export ARM_ACCESS_KEY=...` |
+| `XCSH_API_URL`, `XCSH_API_TOKEN` (provider auth) | GitHub **secrets** | `export XCSH_API_URL=... XCSH_API_TOKEN=...` |
 
 ```sh
-export XCSH_API_URL="https://f5-sales-demo.console.ves.volterra.io"
-export XCSH_API_TOKEN="<api-token>"          # provider auth (header: APIToken <token>)
-export ARM_ACCESS_KEY="<storage-account-key>" # azurerm backend auth
+export XCSH_API_URL="https://<tenant>.console.ves.volterra.io"
+export XCSH_API_TOKEN="<api-token>"           # provider auth (header: APIToken <token>)
+export ARM_ACCESS_KEY="<storage-account-key>" # azurerm backend auth (never committed)
+cp backend.hcl.example backend.hcl            # edit if your coords differ
+cp terraform.tfvars.example terraform.tfvars  # sets domain, namespace, records
 ```
-
-In CI these are the repo secrets `XCSH_API_URL`, `XCSH_API_TOKEN`, and `ARM_ACCESS_KEY`.
 
 ## Usage
 
 ```sh
-terraform init          # configures the azurerm backend
+terraform init -backend-config=backend.hcl   # partial backend: coords from backend.hcl
 terraform fmt -check
 terraform validate
 terraform plan
@@ -70,4 +77,4 @@ terraform destroy
 ```
 
 > DNS objects must be created in the `system` namespace (the API rejects others).
-> `f5-sales-demo.com` is delegated to F5 XC, so managed records resolve on the public internet.
+> The domain is delegated to F5 XC, so managed records resolve on the public internet.

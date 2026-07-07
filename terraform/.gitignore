@@ -12,6 +12,10 @@ crash.*.log
 *.tfvars
 !*.tfvars.example
 
+# Local backend config (partial backend); example is committed
+backend.hcl
+!backend.hcl.example
+
 # CLI config / credentials
 .terraformrc
 terraform.rc

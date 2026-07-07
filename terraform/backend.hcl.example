@@ -1,0 +1,7 @@
+# Local backend config for the azurerm remote state (partial backend).
+# Copy to backend.hcl (gitignored) and init:  terraform init -backend-config=backend.hcl
+# These are the values bootstrapped by scripts/bootstrap-azure-state.sh.
+resource_group_name  = "f5-sales-demo-tfstate"
+storage_account_name = "f5salesdemotfstate"
+container_name       = "tfstate"
+key                  = "dns.tfstate"
