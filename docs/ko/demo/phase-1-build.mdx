@@ -1,27 +1,27 @@
 ---
 title: 1단계 — 빌드
 description: >-
-  Terraform으로 F5 Distributed Cloud DNS 영역 배포 — 플랜 파일, 필수 변수 및 시크릿, Azure 원격 상태,
-  GitHub Actions 워크플로.
+  Terraform으로 F5 Distributed Cloud DNS 존 배포 — 플랜 파일, 필수 변수 및 시크릿, Azure 원격 상태,
+  GitHub Actions 워크플로우.
 sidebar:
   order: 2
   label: 1단계 — 빌드
 i18n:
-  sourceHash: 1b2a3a4d703d
+  sourceHash: 16f23a06fb01
   translator: machine
 ---
 
 import { Steps, Aside, Tabs, TabItem } from "@astrojs/starlight/components";
 
-1단계에서는 Azure Blob Storage의 원격 상태를 기반으로 Terraform을 사용하여 F5 Distributed Cloud에 신뢰할 수 있는 **기본 DNS 영역**을 배포합니다. 이 페이지에서는 플랜의 모든 파일을 보여주고, 필수 변수와 시크릿을 설명하며, 로컬 실행 및 GitHub Actions 파이프라인 모두를 다룹니다.
+1단계에서는 Azure Blob Storage의 원격 상태를 기반으로 Terraform을 사용하여 F5 Distributed Cloud에 권위 있는 **기본 DNS 존**을 배포합니다. 이 페이지에서는 플랜의 모든 파일을 보여주고, 필수 변수와 시크릿을 설명하며, 로컬 실행과 GitHub Actions 파이프라인 모두를 다룹니다.
 
 ## 배포 대상
 
-- 위임된 도메인에 대한 `xcsh_dns_zone` — `system` 네임스페이스에서 A 레코드(`www`, `app`, `api`)로 구성된 `demo-records` 그룹을 포함합니다.
-- Azure Blob Storage 컨테이너에 저장된 Terraform 상태 — 로컬 머신과 CI 간에 동일한 상태를 공유합니다.
+- `system` 네임스페이스에서 위임된 도메인에 대한 `xcsh_dns_zone`과 A 레코드(`www`, `app`, `api`)로 구성된 `demo-records` 그룹.
+- Azure Blob Storage 컨테이너에 저장된 Terraform 상태로, 사용자 머신과 CI 간에 동일한 상태를 공유합니다.
 
 <Aside type="note">
-DNS 객체는 반드시 `system` 네임스페이스에서 생성해야 합니다 — F5 XC API는 다른 네임스페이스를 거부합니다. 영역 이름은 계정이 소유한 도메인이어야 하며, 레코드 TTL은 최소 60초 이상이어야 합니다.
+DNS 객체는 `system` 네임스페이스에서 생성되어야 합니다 — F5 XC API는 다른 네임스페이스를 거부합니다. 존 이름은 계정이 소유한 도메인이어야 하며, 레코드 TTL은 최소 60초 이상이어야 합니다.
 </Aside>
 
 ## 플랜
@@ -30,7 +30,7 @@ DNS 객체는 반드시 `system` 네임스페이스에서 생성해야 합니다
 
 ### versions.tf
 
-Terraform과 프로바이더를 고정합니다. 프로바이더 제약 조건은 `>= 3.61.15` — DNS 리소스를 포함하는 최초의 레지스트리 릴리스입니다.
+Terraform과 프로바이더를 고정합니다. 프로바이더 제약 조건은 `>= 3.62.0`이며, 이 릴리스에서 시스템 전용 DNS 리소스가 자동으로 네임스페이스를 기본값으로 설정합니다.
 
 ```hcl
 terraform {
@@ -39,10 +39,10 @@ terraform {
   required_providers {
     xcsh = {
       source = "f5-sales-demo/xcsh"
-      # First registry release that ships the DNS resources (xcsh_dns_zone,
-      # dns_lb_*, geo_location_set). Earlier releases lack them. Locally the
-      # provider is consumed via dev_overrides, which ignores this constraint.
-      version = ">= 3.61.15"
+      # >= 3.62.0: the namespace attribute for system-only DNS resources defaults
+      # to "system" (spec-driven), so it can be omitted. Locally the provider is
+      # consumed via dev_overrides, which ignores this constraint.
+      version = ">= 3.62.0"
     }
   }
 }
@@ -50,7 +50,7 @@ terraform {
 
 ### providers.tf
 
-프로바이더는 코드에서 인수를 받지 않으며 — 환경에서 인증하므로 시크릿이 커밋되지 않습니다.
+프로바이더는 코드에서 인수를 받지 않으며, 환경에서 인증하므로 시크릿이 커밋되지 않습니다.
 
 ```hcl
 # The xcsh provider authenticates from the environment — no secrets in code.
@@ -66,7 +66,7 @@ provider "xcsh" {}
 
 ### backend.tf
 
-**부분적** `azurerm` 백엔드: 환경별 값은 하드코딩되지 않습니다. 좌표는 `init` 시에 제공됩니다(로컬 파일에서, 또는 CI의 GitHub Actions 변수에서).
+**부분** `azurerm` 백엔드: 환경별 값이 하드코딩되지 않습니다. 좌표는 `init` 시점에 제공됩니다(로컬 파일에서, 또는 CI의 GitHub Actions 변수에서).
 
 ```hcl
 terraform {
@@ -87,20 +87,9 @@ terraform {
 
 ### variables.tf
 
-`namespace`는 `system`으로 검증되며, `domain`은 필수(런타임에 제공되며 하드코딩되지 않음)이고, `a_records`는 각 레코드 이름을 IPv4 주소에 매핑합니다.
+`domain`은 필수 값입니다(런타임에 제공되며 하드코딩되지 않음). `a_records`는 각 레코드 이름을 IPv4 주소에 매핑합니다. `namespace` 변수는 없으며, 프로바이더가 API 사양의 제약 조건에 따라 DNS 객체를 `system` 네임스페이스로 고정하므로 여기서 구성하지 않습니다.
 
 ```hcl
-variable "namespace" {
-  description = "F5 XC namespace for DNS objects. DNS objects MUST live in 'system'."
-  type        = string
-  default     = "system"
-
-  validation {
-    condition     = var.namespace == "system"
-    error_message = "F5 XC DNS objects must be created in the 'system' namespace."
-  }
-}
-
 variable "domain" {
   description = "DNS zone FQDN (required; supplied via TF_VAR_domain / a GitHub variable / tfvars)."
   type        = string
@@ -127,10 +116,10 @@ variable "a_records" {
 ```
 
 <Aside type="tip">
-기본 A 레코드는 RFC 5737 문서용 주소(`203.0.113.0/24`)를 사용하며, 이는 라우팅 불가능한 주소입니다. 실제 데모에서는 실제 대상 주소로 교체하십시오.
+기본 A 레코드는 RFC 5737 문서화 주소(`203.0.113.0/24`)를 사용하며, 라우팅이 불가능합니다. 라이브 데모를 위해 실제 대상으로 교체하십시오.
 </Aside>
 
-### main.tf와 dns-zone 모듈
+### main.tf 및 dns-zone 모듈
 
 루트 모듈은 입력을 `./modules/dns-zone`으로 연결합니다:
 
@@ -139,19 +128,17 @@ module "dns_zone" {
   source = "./modules/dns-zone"
 
   domain    = var.domain
-  namespace = var.namespace
   labels    = var.labels
   a_records = var.a_records
 }
 ```
 
-모듈이 영역을 생성합니다. `dynamic "rr_set"` 블록은 `a_records` 맵을 항목당 하나의 레코드 세트로 변환합니다:
+모듈은 존을 생성합니다(네임스페이스는 생략됨 — 프로바이더가 기본값으로 `system`을 사용). `dynamic "rr_set"` 블록은 `a_records` 맵을 항목당 하나의 레코드 세트로 변환합니다:
 
 ```hcl
 resource "xcsh_dns_zone" "this" {
-  name      = var.domain
-  namespace = var.namespace
-  labels    = var.labels
+  name   = var.domain
+  labels = var.labels
 
   primary {
     default_soa_parameters {}
@@ -176,20 +163,20 @@ resource "xcsh_dns_zone" "this" {
 }
 ```
 
-루트 `outputs.tf`는 모듈에서 영역 이름과 F5 XC 식별자를 다시 내보냅니다.
+루트 `outputs.tf`는 모듈에서 존 이름과 F5 XC 식별자를 다시 내보냅니다.
 
 ## 필수 변수 및 시크릿
 
-환경별 값은 `.tf` 파일에 포함되어 있지 않습니다. 모든 값은 런타임에 제공됩니다 — CI에서는 GitHub Actions **변수** 및 **시크릿**으로, 또는 로컬 파일 및 환경 변수로 제공됩니다.
+환경별 정보는 `.tf` 파일에 포함되지 않습니다. 모든 것은 런타임에 제공됩니다 — CI에서는 GitHub Actions **변수**와 **시크릿**에서, 로컬에서는 파일과 환경 변수에서 제공됩니다.
 
 | 값 | 목적 | CI 소스 | 로컬 소스 |
 | --- | --- | --- | --- |
-| `resource_group_name`, `storage_account_name`, `container_name`, `key` | azurerm 백엔드 좌표 | 리포지토리 **변수** `TFSTATE_RESOURCE_GROUP`, `TFSTATE_STORAGE_ACCOUNT`, `TFSTATE_CONTAINER`, `TFSTATE_KEY` (`-backend-config`를 통해 전달) | `backend.hcl` (`backend.hcl.example` 복사; gitignored) |
-| `domain`, `namespace` | Terraform 입력 | 리포지토리 **변수** `DNS_DOMAIN`, `DNS_NAMESPACE` (`TF_VAR_domain` / `TF_VAR_namespace`로) | `terraform.tfvars` (예제 복사) 또는 `TF_VAR_*` |
-| `ARM_ACCESS_KEY` | azurerm 백엔드 인증 (스토리지 계정 키) | 리포지토리 **시크릿** | `export ARM_ACCESS_KEY=...` |
-| `XCSH_API_URL`, `XCSH_API_TOKEN` | xcsh 프로바이더 인증 | 리포지토리 **시크릿** | `export XCSH_API_URL=... XCSH_API_TOKEN=...` |
+| `resource_group_name`, `storage_account_name`, `container_name`, `key` | azurerm 백엔드 좌표 | 저장소 **변수** `TFSTATE_RESOURCE_GROUP`, `TFSTATE_STORAGE_ACCOUNT`, `TFSTATE_CONTAINER`, `TFSTATE_KEY` (`-backend-config`로 전달) | `backend.hcl` (`backend.hcl.example`을 복사; gitignored) |
+| `domain` | Terraform 입력 | 저장소 **변수** `DNS_DOMAIN` (`TF_VAR_domain`으로) | `terraform.tfvars` (예제 복사) 또는 `TF_VAR_domain` |
+| `ARM_ACCESS_KEY` | azurerm 백엔드 인증 (스토리지 계정 키) | 저장소 **시크릿** | `export ARM_ACCESS_KEY=...` |
+| `XCSH_API_URL`, `XCSH_API_TOKEN` | xcsh 프로바이더 인증 | 저장소 **시크릿** | `export XCSH_API_URL=... XCSH_API_TOKEN=...` |
 
-리포지토리에 포함된 두 예제 파일:
+저장소에 포함된 두 가지 예제 파일:
 
 <Tabs>
 <TabItem label="backend.hcl.example">
@@ -205,8 +192,7 @@ key                  = "dns.tfstate"
 <TabItem label="terraform.tfvars.example">
 
 ```hcl
-namespace = "system"
-domain    = "f5-sales-demo.com"
+domain = "f5-sales-demo.com"
 
 labels = {
   managed_by = "terraform"
@@ -224,12 +210,12 @@ a_records = {
 </Tabs>
 
 <Aside type="caution">
-백엔드 인증은 키 없는 OIDC / Azure AD 대신 스토리지 계정 액세스 키(`ARM_ACCESS_KEY`)를 사용합니다. 키 없는 데이터 플레인 액세스에는 *Storage Blob Data Contributor* 역할이 필요한데, Contributor 전용 구독에서는 이를 할당할 수 없습니다. 액세스 키는 환경 또는 GitHub 시크릿에만 존재하며 — 커밋되지 않습니다.
+백엔드 인증은 키 없는 OIDC / Azure AD 대신 스토리지 계정 액세스 키(`ARM_ACCESS_KEY`)를 사용합니다. 키 없는 데이터 플레인 액세스에는 *Storage Blob Data Contributor* 역할이 필요하며, Contributor 전용 구독에서는 이 역할을 할당할 수 없습니다. 액세스 키는 환경 또는 GitHub 시크릿에만 저장되며 커밋되지 않습니다.
 </Aside>
 
 ## Azure 상태 백엔드 부트스트랩
 
-백엔드 스토리지는 자체 부트스트랩을 저장할 수 없으므로, 인증된 Azure CLI 세션을 사용하여 별도로 한 번만 생성합니다. 리포지토리에는 `scripts/bootstrap-azure-state.sh`가 포함되어 있습니다:
+백엔드 스토리지는 자체 부트스트랩을 저장할 수 없으므로, 인증된 Azure CLI 세션으로 대역 외에서 한 번 생성합니다. 저장소에는 `scripts/bootstrap-azure-state.sh`가 포함되어 있습니다:
 
 ```sh
 az group create --name f5-sales-demo-tfstate --location eastus2 \
@@ -254,7 +240,7 @@ az storage container create --name tfstate \
   --account-name f5salesdemotfstate --auth-mode key --account-key "$KEY"
 ```
 
-그런 다음 로컬 실행을 위해 키를 내보내고, GitHub 시크릿으로 키와 프로바이더 자격 증명을 설정합니다:
+그런 다음 로컬 실행을 위해 키를 내보내고, 키(및 프로바이더 자격 증명)를 GitHub 시크릿으로 설정합니다:
 
 ```sh
 export ARM_ACCESS_KEY="$KEY"
@@ -267,14 +253,14 @@ gh secret set XCSH_API_TOKEN -R f5-sales-demo/dns
 
 <Steps>
 
-1. **입력 구성.** 예제를 복사하고 값을 입력합니다:
+1. **입력을 구성합니다.** 예제를 복사하고 값을 입력합니다:
 
    ```sh
    cp terraform/backend.hcl.example terraform/backend.hcl
    cp terraform/terraform.tfvars.example terraform/terraform.tfvars
    ```
 
-2. **자격 증명 내보내기:**
+2. **자격 증명을 내보냅니다:**
 
    ```sh
    export XCSH_API_URL="https://<tenant>.console.ves.volterra.io"
@@ -282,14 +268,14 @@ gh secret set XCSH_API_TOKEN -R f5-sales-demo/dns
    export ARM_ACCESS_KEY="<storage-account-key>"
    ```
 
-3. 부분 구성으로 백엔드 **초기화:**
+3. 부분 구성으로 백엔드를 **초기화**합니다:
 
    ```sh
    cd terraform
    terraform init -backend-config=backend.hcl
    ```
 
-4. **형식 확인 및 유효성 검사:**
+4. **포맷을 확인하고 유효성을 검사합니다:**
 
    ```sh
    terraform fmt -check -recursive
@@ -305,11 +291,11 @@ gh secret set XCSH_API_TOKEN -R f5-sales-demo/dns
 
 </Steps>
 
-적용이 성공하면 영역이 생성되고 Azure 컨테이너에 상태가 기록됩니다. [2단계 — 검증](/dns/demo/phase-2-validate/)으로 계속 진행하여 해석이 정상적으로 이루어지는지 확인하십시오.
+성공적으로 적용되면 존이 생성되고 상태가 Azure 컨테이너에 기록됩니다. [2단계 — 검증](/dns/demo/phase-2-validate/)으로 이동하여 DNS 확인을 확인하십시오.
 
 ## 지속적 통합
 
-`.github/workflows/terraform.yml` 워크플로는 모든 풀 리퀘스트에서 **플랜**을 실행하고, `main`으로 병합 시 **적용**을 실행합니다. 백엔드 좌표와 입력은 리포지토리 변수에서, 자격 증명은 시크릿에서 읽어 각각 필요한 단계에만 주입하며, 동시성 그룹을 통해 실행을 직렬화하여 두 번의 적용이 공유 상태 블롭에서 동시에 실행되지 않도록 합니다.
+`.github/workflows/terraform.yml` 워크플로우는 모든 풀 리퀘스트에서 **플랜**을 실행하고, `main`에 병합 시 **적용**을 실행합니다. 저장소 변수에서 백엔드 좌표와 입력을 읽고, 시크릿에서 자격 증명을 읽어 필요한 단계에만 각각 주입하며, 동시성 그룹에서 실행을 직렬화하여 두 적용이 공유 상태 블롭에서 경쟁하지 않도록 합니다.
 
 ```yaml
 name: Terraform
@@ -373,7 +359,6 @@ jobs:
           XCSH_API_URL: ${{ secrets.XCSH_API_URL }}
           XCSH_API_TOKEN: ${{ secrets.XCSH_API_TOKEN }}
           TF_VAR_domain: ${{ vars.DNS_DOMAIN }}
-          TF_VAR_namespace: ${{ vars.DNS_NAMESPACE }}
         run: terraform plan -input=false -no-color
 
       - name: Apply
@@ -383,8 +368,7 @@ jobs:
           XCSH_API_URL: ${{ secrets.XCSH_API_URL }}
           XCSH_API_TOKEN: ${{ secrets.XCSH_API_TOKEN }}
           TF_VAR_domain: ${{ vars.DNS_DOMAIN }}
-          TF_VAR_namespace: ${{ vars.DNS_NAMESPACE }}
         run: terraform apply -input=false -auto-approve -no-color
 ```
 
-액션은 커밋 SHA에 고정되어 있으며(버전 주석 포함), 시크릿은 전체 잡이 아닌 `init`, `plan`, `apply` 단계로 범위가 제한됩니다.
+액션은 커밋 SHA에 고정되어 있으며(버전 주석 포함), 시크릿은 전체 작업이 아닌 `init`, `plan`, `apply` 단계로 범위가 제한됩니다.

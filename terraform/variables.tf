@@ -1,14 +1,3 @@
-variable "namespace" {
-  description = "F5 XC namespace for DNS objects. DNS objects MUST live in 'system' (the API rejects other namespaces)."
-  type        = string
-  default     = "system"
-
-  validation {
-    condition     = var.namespace == "system"
-    error_message = "F5 XC DNS objects must be created in the 'system' namespace."
-  }
-}
-
 variable "domain" {
   description = "DNS zone FQDN (required; supplied via TF_VAR_domain / a GitHub Actions variable / tfvars — not hardcoded). Our delegated, prerelease test domain in the production tenant."
   type        = string

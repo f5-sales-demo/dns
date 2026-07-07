@@ -1,42 +1,41 @@
 ---
 title: المرحلة 1 — البناء
 description: >-
-  نشر منطقة DNS الخاصة بـ F5 Distributed Cloud باستخدام Terraform — ملفات الخطة،
-  والمتغيرات والأسرار المطلوبة، والحالة البعيدة في Azure، وسير عمل GitHub
-  Actions.
+  نشر منطقة DNS لـ F5 Distributed Cloud باستخدام Terraform — ملفات الخطة،
+  المتغيرات والأسرار المطلوبة، الحالة البعيدة في Azure، وسير عمل GitHub Actions.
 sidebar:
   order: 2
   label: المرحلة 1 — البناء
 i18n:
-  sourceHash: 1b2a3a4d703d
+  sourceHash: 16f23a06fb01
   translator: machine
 ---
 
 import { Steps, Aside, Tabs, TabItem } from "@astrojs/starlight/components";
 
 تنشر المرحلة 1 **منطقة DNS أساسية موثوقة** على F5 Distributed Cloud باستخدام Terraform، مدعومةً
-بحالة بعيدة في Azure Blob Storage. تعرض هذه الصفحة كل ملف في الخطة، وتشرح المتغيرات والأسرار المطلوبة، وتغطي كلاً من التشغيل المحلي وخط أنابيب GitHub Actions.
+بحالة بعيدة في Azure Blob Storage. تعرض هذه الصفحة كل ملف في الخطة، وتشرح المتغيرات والأسرار المطلوبة،
+وتغطي كلًّا من التشغيل المحلي وخط أنابيب GitHub Actions.
 
-## ما الذي تنشره
+## ما الذي يُنشر
 
-- منطقة `xcsh_dns_zone` للنطاق المفوَّض إليك، في مساحة الاسم `system`، مع مجموعة `demo-records`
-  من سجلات A (`www`، `app`، `api`).
-- حالة Terraform مخزنة في حاوية Azure Blob Storage، بحيث تكون الحالة ذاتها مشتركة بين
-  جهازك وبيئة CI.
+- منطقة `xcsh_dns_zone` للنطاق المفوَّض لديك، في مساحة الاسم `system`، مع مجموعة سجلات A باسم `demo-records`
+  (`www` و`app` و`api`).
+- حالة Terraform مخزَّنة في حاوية Azure Blob Storage، بحيث تُشارَك نفس الحالة بين جهازك وبيئة CI.
 
 <Aside type="note">
 يجب إنشاء كائنات DNS في مساحة الاسم `system` — يرفض F5 XC API مساحات الأسماء الأخرى. يجب أن يكون
-اسم المنطقة نطاقًا تملكه حسابك، وأن لا تقل قيم TTL للسجلات عن 60 ثانية.
+اسم المنطقة نطاقًا يمتلكه حسابك، ويجب أن تكون قيم TTL للسجلات 60 ثانية على الأقل.
 </Aside>
 
 ## الخطة
 
-تقع الخطة تحت `terraform/`: وحدة جذر خفيفة تصل المدخلات بوحدة `dns-zone`.
+تقع الخطة ضمن `terraform/`: وحدة جذر خفيفة تربط المدخلات بوحدة `dns-zone`.
 
 ### versions.tf
 
-يثبّت إصدار Terraform ومزود الخدمة. قيد المزود هو `>= 3.61.15` — أول إصدار في السجل
-يأتي مع موارد DNS.
+يُثبّت إصدار Terraform والموفِّر. قيد الموفِّر هو `>= 3.62.0` — الإصدار الذي أصبحت فيه موارد DNS
+المخصصة للنظام فقط تعيِّن مساحة أسمائها تلقائيًا.
 
 ```hcl
 terraform {
@@ -45,10 +44,10 @@ terraform {
   required_providers {
     xcsh = {
       source = "f5-sales-demo/xcsh"
-      # First registry release that ships the DNS resources (xcsh_dns_zone,
-      # dns_lb_*, geo_location_set). Earlier releases lack them. Locally the
-      # provider is consumed via dev_overrides, which ignores this constraint.
-      version = ">= 3.61.15"
+      # >= 3.62.0: the namespace attribute for system-only DNS resources defaults
+      # to "system" (spec-driven), so it can be omitted. Locally the provider is
+      # consumed via dev_overrides, which ignores this constraint.
+      version = ">= 3.62.0"
     }
   }
 }
@@ -56,7 +55,7 @@ terraform {
 
 ### providers.tf
 
-لا يأخذ المزود أي وسائط في الكود — يصادق من البيئة، لذا لا يُودَع أي سر.
+لا يأخذ الموفِّر أي وسائط في الكود — يُصادق من البيئة، لذلك لا تُودَع أي أسرار في الكود.
 
 ```hcl
 # The xcsh provider authenticates from the environment — no secrets in code.
@@ -72,8 +71,8 @@ provider "xcsh" {}
 
 ### backend.tf
 
-خلفية `azurerm` **جزئية**: لا توجد قيم خاصة بالبيئة مُضمَّنة في الكود. يتم توفير الإحداثيات
-وقت `init` (من ملف محلي، أو من متغيرات GitHub Actions في بيئة CI).
+خلفية `azurerm` **جزئية**: لا توجد قيم خاصة بالبيئة مُضمَّنة في الكود. يتم توفير الإحداثيات عند
+وقت `init` (من ملف محلي، أو من متغيرات GitHub Actions في CI).
 
 ```hcl
 terraform {
@@ -94,21 +93,11 @@ terraform {
 
 ### variables.tf
 
-يُتحقَّق من أن `namespace` تساوي `system`؛ و`domain` مطلوبة (تُوفَّر وقت التشغيل، غير مُضمَّنة في الكود)؛
-و`a_records` تربط كل اسم سجل بعناوين IPv4 الخاصة به.
+`domain` مطلوب (يُوفَّر في وقت التشغيل، غير مُضمَّن أبدًا)؛ يربط `a_records` كل اسم سجل بعناوين
+IPv4 الخاصة به. لا يوجد متغير `namespace` — يُثبِّت الموفِّر كائنات DNS في مساحة الاسم `system`
+وفق قيد مواصفات API، لذا لا يُضبط هنا مطلقًا.
 
 ```hcl
-variable "namespace" {
-  description = "F5 XC namespace for DNS objects. DNS objects MUST live in 'system'."
-  type        = string
-  default     = "system"
-
-  validation {
-    condition     = var.namespace == "system"
-    error_message = "F5 XC DNS objects must be created in the 'system' namespace."
-  }
-}
-
 variable "domain" {
   description = "DNS zone FQDN (required; supplied via TF_VAR_domain / a GitHub variable / tfvars)."
   type        = string
@@ -136,32 +125,30 @@ variable "a_records" {
 
 <Aside type="tip">
 تستخدم سجلات A الافتراضية عناوين توثيق RFC 5737 (`203.0.113.0/24`)، وهي غير قابلة للتوجيه.
-استبدلها بأهداف حقيقية للعرض التوضيحي الحي.
+استبدلها بأهداف حقيقية للعرض التوضيحي المباشر.
 </Aside>
 
 ### main.tf ووحدة dns-zone
 
-تصل وحدة الجذر المدخلات بـ `./modules/dns-zone`:
+تربط وحدة الجذر المدخلات بـ `./modules/dns-zone`:
 
 ```hcl
 module "dns_zone" {
   source = "./modules/dns-zone"
 
   domain    = var.domain
-  namespace = var.namespace
   labels    = var.labels
   a_records = var.a_records
 }
 ```
 
-تنشئ الوحدة المنطقة. يحوّل كتلة `dynamic "rr_set"` خريطة `a_records` إلى مجموعة سجل واحدة
-لكل إدخال:
+تُنشئ الوحدة المنطقة (يُحذف مساحة الاسم — يُعيِّنها الموفِّر افتراضيًا إلى `system`). يُحوِّل
+كتلة `dynamic "rr_set"` خريطة `a_records` إلى مجموعة سجل واحدة لكل إدخال:
 
 ```hcl
 resource "xcsh_dns_zone" "this" {
-  name      = var.domain
-  namespace = var.namespace
-  labels    = var.labels
+  name   = var.domain
+  labels = var.labels
 
   primary {
     default_soa_parameters {}
@@ -186,21 +173,21 @@ resource "xcsh_dns_zone" "this" {
 }
 ```
 
-يُعيد `outputs.tf` في الجذر تصدير اسم المنطقة ومعرّف F5 XC من الوحدة.
+يُعيد `outputs.tf` في الجذر تصدير اسم المنطقة ومعرِّف F5 XC من الوحدة.
 
 ## المتغيرات والأسرار المطلوبة
 
-لا يوجد أي شيء خاص بالبيئة مُضمَّن في ملفات `.tf`. يتم توفير كل شيء وقت التشغيل — من
-**متغيرات** و**أسرار** GitHub Actions في بيئة CI، أو من ملفات محلية ومتغيرات البيئة.
+لا يوجد أي قيمة خاصة بالبيئة مُضمَّنة في ملفات `.tf`. يُوفَّر كل شيء في وقت التشغيل — من
+**متغيرات** و**أسرار** GitHub Actions في CI، أو من الملفات المحلية ومتغيرات البيئة.
 
 | القيمة | الغرض | المصدر في CI | المصدر المحلي |
 | --- | --- | --- | --- |
-| `resource_group_name`، `storage_account_name`، `container_name`، `key` | إحداثيات خلفية azurerm | **متغيرات** المستودع `TFSTATE_RESOURCE_GROUP`، `TFSTATE_STORAGE_ACCOUNT`، `TFSTATE_CONTAINER`، `TFSTATE_KEY` (تُمرَّر عبر `-backend-config`) | `backend.hcl` (انسخ `backend.hcl.example`؛ مُدرَج في gitignore) |
-| `domain`، `namespace` | مدخلات Terraform | **متغيرات** المستودع `DNS_DOMAIN`، `DNS_NAMESPACE` (كـ `TF_VAR_domain` / `TF_VAR_namespace`) | `terraform.tfvars` (انسخ المثال) أو `TF_VAR_*` |
+| `resource_group_name`، `storage_account_name`، `container_name`، `key` | إحداثيات خلفية azurerm | **متغيرات** المستودع `TFSTATE_RESOURCE_GROUP`، `TFSTATE_STORAGE_ACCOUNT`، `TFSTATE_CONTAINER`، `TFSTATE_KEY` (تُمرَّر عبر `-backend-config`) | `backend.hcl` (انسخ `backend.hcl.example`؛ مُدرج في gitignore) |
+| `domain` | مدخل Terraform | **متغير** المستودع `DNS_DOMAIN` (كـ `TF_VAR_domain`) | `terraform.tfvars` (انسخ المثال) أو `TF_VAR_domain` |
 | `ARM_ACCESS_KEY` | مصادقة خلفية azurerm (مفتاح حساب التخزين) | **سر** المستودع | `export ARM_ACCESS_KEY=...` |
-| `XCSH_API_URL`، `XCSH_API_TOKEN` | مصادقة مزود xcsh | **أسرار** المستودع | `export XCSH_API_URL=... XCSH_API_TOKEN=...` |
+| `XCSH_API_URL`، `XCSH_API_TOKEN` | مصادقة موفِّر xcsh | **أسرار** المستودع | `export XCSH_API_URL=... XCSH_API_TOKEN=...` |
 
-الملفان النموذجيان المرفقان في المستودع:
+ملفا المثال المُضمَّنان في المستودع:
 
 <Tabs>
 <TabItem label="backend.hcl.example">
@@ -216,8 +203,7 @@ key                  = "dns.tfstate"
 <TabItem label="terraform.tfvars.example">
 
 ```hcl
-namespace = "system"
-domain    = "f5-sales-demo.com"
+domain = "f5-sales-demo.com"
 
 labels = {
   managed_by = "terraform"
@@ -235,15 +221,15 @@ a_records = {
 </Tabs>
 
 <Aside type="caution">
-تستخدم مصادقة الخلفية مفتاح وصول حساب التخزين (`ARM_ACCESS_KEY`) بدلاً من OIDC عديم المفاتيح /
-Azure AD. يتطلب وصول مستوى البيانات عديم المفاتيح دور *Storage Blob Data Contributor*، الذي لا
-يمكن لاشتراك Contributor فقط تعيينه. يقتصر مفتاح الوصول على البيئة أو سر GitHub — ولا يُودَع مطلقًا.
+تستخدم مصادقة الخلفية مفتاح وصول حساب التخزين (`ARM_ACCESS_KEY`) بدلًا من OIDC بلا مفتاح / Azure AD.
+يتطلب وصول مستوى البيانات بلا مفتاح دور *Storage Blob Data Contributor*، وهو ما لا يستطيع اشتراك
+Contributor فقط تعيينه. يوجد مفتاح الوصول فقط في البيئة أو في سر GitHub — ولا يُودَع أبدًا.
 </Aside>
 
-## إقلاع خلفية الحالة في Azure
+## تمهيد خلفية حالة Azure
 
-لا يمكن لتخزين الخلفية تخزين إقلاعه الخاص، لذا أنشئها مرة واحدة، خارج النطاق، باستخدام
-جلسة Azure CLI مصادَق عليها. يأتي المستودع مع `scripts/bootstrap-azure-state.sh`:
+لا يمكن لتخزين الخلفية تخزين تمهيد نفسه، لذا أنشئه مرة واحدة خارج النطاق باستخدام جلسة Azure CLI
+مُصادَق عليها. يُضمَّن في المستودع `scripts/bootstrap-azure-state.sh`:
 
 ```sh
 az group create --name f5-sales-demo-tfstate --location eastus2 \
@@ -268,7 +254,7 @@ az storage container create --name tfstate \
   --account-name f5salesdemotfstate --auth-mode key --account-key "$KEY"
 ```
 
-ثم صدِّر المفتاح للتشغيل المحلي، واضبطه (إلى جانب بيانات اعتماد المزود) كأسرار GitHub:
+ثم صدِّر المفتاح للتشغيل المحلي، واضبطه (مع بيانات اعتماد الموفِّر) كأسرار GitHub:
 
 ```sh
 export ARM_ACCESS_KEY="$KEY"
@@ -281,7 +267,7 @@ gh secret set XCSH_API_TOKEN -R f5-sales-demo/dns
 
 <Steps>
 
-1. **تهيئة المدخلات.** انسخ الأمثلة واملأ قيمك:
+1. **تهيئة المدخلات.** انسخ الأمثلة وأدخل قيمك:
 
    ```sh
    cp terraform/backend.hcl.example terraform/backend.hcl
@@ -303,7 +289,7 @@ gh secret set XCSH_API_TOKEN -R f5-sales-demo/dns
    terraform init -backend-config=backend.hcl
    ```
 
-4. **التحقق من التنسيق والتحقق من الصحة:**
+4. **فحص التنسيق والتحقق من الصحة:**
 
    ```sh
    terraform fmt -check -recursive
@@ -320,14 +306,14 @@ gh secret set XCSH_API_TOKEN -R f5-sales-demo/dns
 </Steps>
 
 يُنشئ التطبيق الناجح المنطقة ويكتب الحالة إلى حاوية Azure. تابع إلى
-[المرحلة 2 — التحقق](/dns/demo/phase-2-validate/) للتأكد من أنها تحل.
+[المرحلة 2 — التحقق](/dns/demo/phase-2-validate/) للتأكد من أنها تُحلِّل بشكل صحيح.
 
 ## التكامل المستمر
 
-يشغّل سير العمل `.github/workflows/terraform.yml` **خطة** على كل طلب سحب و**تطبيقًا**
-عند الدمج في `main`. يقرأ إحداثيات الخلفية والمدخلات من متغيرات المستودع وبيانات
-الاعتماد من الأسرار، ويحقنها فقط في الخطوة التي تحتاجها، ويتسلسل التشغيل على مجموعة تزامن
-حتى لا يتسابق تطبيقان على نقطة الحالة المشتركة.
+يُشغِّل سير العمل `.github/workflows/terraform.yml` عملية **تخطيط** عند كل طلب سحب وعملية **تطبيق**
+عند الدمج في `main`. يقرأ إحداثيات الخلفية والمدخلات من متغيرات المستودع وبيانات الاعتماد من الأسرار،
+ويُدرج كلًّا منها فقط في الخطوة التي تحتاجه، ويُرتِّب التشغيلات على مجموعة تزامن حتى لا يتسابق
+تطبيقان على نقطة الحالة المشتركة.
 
 ```yaml
 name: Terraform
@@ -391,7 +377,6 @@ jobs:
           XCSH_API_URL: ${{ secrets.XCSH_API_URL }}
           XCSH_API_TOKEN: ${{ secrets.XCSH_API_TOKEN }}
           TF_VAR_domain: ${{ vars.DNS_DOMAIN }}
-          TF_VAR_namespace: ${{ vars.DNS_NAMESPACE }}
         run: terraform plan -input=false -no-color
 
       - name: Apply
@@ -401,9 +386,8 @@ jobs:
           XCSH_API_URL: ${{ secrets.XCSH_API_URL }}
           XCSH_API_TOKEN: ${{ secrets.XCSH_API_TOKEN }}
           TF_VAR_domain: ${{ vars.DNS_DOMAIN }}
-          TF_VAR_namespace: ${{ vars.DNS_NAMESPACE }}
         run: terraform apply -input=false -auto-approve -no-color
 ```
 
-الإجراءات مثبَّتة على SHAs للإيداعات (مع تعليقات الإصدار)، والأسرار محدودة النطاق بخطوات `init`
-و`plan` و`apply` بدلاً من الوظيفة بأكملها.
+الإجراءات مثبَّتة على تجزئات الالتزام (مع تعليقات الإصدار)، والأسرار محدودة النطاق لخطوات `init`
+و`plan` و`apply` بدلًا من الوظيفة بأكملها.

@@ -1,38 +1,38 @@
 ---
 title: ภาพรวม
 description: >-
-  วิธีสร้าง Use Case DNS ของ F5 Distributed Cloud — แผน Terraform ของ
-  xcsh-provider ที่จัดการโซน DNS ที่มอบหมาย พร้อมสถานะใน Azure Blob Storage และ
+  วิธีที่กรณีการใช้งาน F5 Distributed Cloud DNS ถูกสร้างขึ้น — แผน Terraform ของ
+  xcsh-provider ที่จัดการโซน DNS ที่มอบหมาย โดยมีสถานะใน Azure Blob Storage และ
   GitHub Actions CI
 sidebar:
   order: 1
   label: ภาพรวม
 i18n:
-  sourceHash: 353ce3cf521f
+  sourceHash: a9809c0f7860
   translator: machine
 ---
 
 import { Aside } from "@astrojs/starlight/components";
 
-Use Case นี้จัดการ **DNS แบบ Authoritative บน F5 Distributed Cloud** ด้วย Terraform แผนขนาดเล็กที่นำกลับมาใช้ใหม่ได้ จะสร้างโซน DNS หลักและระเบียนสำหรับโดเมนที่มอบหมาย เก็บสถานะไว้ใน **Azure Blob Storage** และรัน plan-on-pull-request / apply-on-merge ผ่าน **GitHub Actions**
+กรณีการใช้งานนี้จัดการ **DNS แบบ authoritative บน F5 Distributed Cloud** ด้วย Terraform แผนขนาดเล็กที่นำกลับมาใช้ใหม่ได้จะสร้างโซน DNS หลักและระเบียนสำหรับโดเมนที่มอบหมาย เก็บสถานะไว้ใน **Azure Blob Storage** และรัน plan-on-pull-request / apply-on-merge ผ่าน **GitHub Actions**
 
 ## สิ่งที่จัดการ
 
-- `xcsh_dns_zone` — โซน **primary** แบบ Authoritative ใน namespace `system` ของ F5 XC พร้อม A records โดยชื่อโซนคือโดเมนที่มอบหมาย (ตัวแปร) ดังนั้นการเปลี่ยนเป้าหมายใหม่จึงเป็นการเปลี่ยนแปลงการกำหนดค่า ไม่ใช่การเปลี่ยนแปลงโค้ด
-- สถานะ Terraform แบบ Remote ใน Azure เพื่อให้การรันสามารถใช้ร่วมกันระหว่างเครื่องของผู้ดำเนินการและ CI
+- `xcsh_dns_zone` — โซน **primary** แบบ authoritative ใน namespace `system` ของ F5 XC พร้อมระเบียน A ชื่อโซนคือโดเมนที่มอบหมาย (ตัวแปร) ดังนั้นการเปลี่ยนเป้าหมายจึงเป็นการเปลี่ยนแปลงการกำหนดค่า ไม่ใช่การเปลี่ยนแปลงโค้ด
+- สถานะ Terraform ระยะไกลใน Azure เพื่อให้การรันสามารถแชร์ระหว่างเครื่องของผู้ดำเนินการและ CI ได้
 
 ## สถาปัตยกรรม
 
-| เลเยอร์ | ตัวเลือก | เหตุผล |
+| ชั้น | ตัวเลือก | เหตุผล |
 | --- | --- | --- |
-| Provider | `f5-sales-demo/xcsh` (Terraform registry) | สร้างขึ้นจาก F5 XC OpenAPI จัดการ `xcsh_dns_zone` และทรัพยากร DNS load-balancer ยืนยันตัวตนด้วย API token (`Authorization: APIToken <token>`) |
-| State backend | `azurerm` (Azure Blob Storage), access-key auth | สถานะที่ทนทานและใช้ร่วมกันได้ ใช้ access-key auth เนื่องจาก subscription มอบสิทธิ์เพียง Contributor เท่านั้น ซึ่งไม่สามารถกำหนดบทบาท *Storage Blob Data Contributor* ที่การยืนยันตัวตนแบบไม่ใช้คีย์ (OIDC / Azure AD) ต้องการได้ |
-| การทำงานอัตโนมัติ | GitHub Actions | Plan ในทุก pull request, apply เมื่อ merge เข้า `main` การประสานงาน Backend และ input มาจาก **variables** ของ repository ส่วน credentials มาจาก **secrets** |
+| Provider | `f5-sales-demo/xcsh` (Terraform registry) | สร้างจาก F5 XC OpenAPI จัดการ `xcsh_dns_zone` และทรัพยากร DNS load-balancer ยืนยันตัวตนด้วย API token (`Authorization: APIToken <token>`) |
+| State backend | `azurerm` (Azure Blob Storage) แบบ access-key auth | สถานะที่ทนทานและแชร์ได้ ใช้ access-key auth เนื่องจาก subscription มอบสิทธิ์เพียง Contributor ซึ่งไม่สามารถกำหนดบทบาท *Storage Blob Data Contributor* ที่การยืนยันตัวตนแบบไม่มีคีย์ (OIDC / Azure AD) ต้องการได้ |
+| การทำงานอัตโนมัติ | GitHub Actions | Plan ทุก pull request, apply เมื่อ merge เข้า `main` พิกัด backend และ input มาจาก **variables** ของ repository ส่วน credentials มาจาก **secrets** |
 
 <Aside type="note">
-ออบเจกต์ DNS ทั้งหมดของ F5 XC ต้องอยู่ใน namespace `system` — API จะปฏิเสธ namespace อื่น แผนนี้บังคับใช้ด้วยกฎการตรวจสอบตัวแปร
+ออบเจกต์ DNS ทั้งหมดของ F5 XC ต้องอยู่ใน namespace `system` — API จะปฏิเสธ namespace อื่น แผนนี้ไม่เปิดเผย namespace เป็น input: provider กำหนดค่าให้เป็น `system` จากข้อจำกัด namespace ใน API spec ดังนั้นจึงละเว้นโดยสิ้นเชิง
 </Aside>
 
-## จะเริ่มต้นที่ไหน
+## จุดเริ่มต้น
 
-ส่วน [ทรัพยากรสาธิต](/dns/demo/) จะอธิบายวงจรชีวิตทั้งหมดตั้งแต่ต้นจนจบ ได้แก่ **Build** โซนด้วย Terraform, **Validate** ว่าสามารถ Resolve ได้, **Failover** ด้วย DNS load balancer และ **Teardown** เริ่มต้นด้วย [Phase 1 — Build](/dns/demo/phase-1-build/) ซึ่งเป็นคู่มือการใช้งานที่สมบูรณ์สำหรับการ Deploy โซน รวมถึงไฟล์ Terraform ทั้งหมด, CI workflow และตัวแปรและ secrets ที่จำเป็น
+ขั้นตอน [Demo](/dns/demo/) จะนำผ่านวงจรชีวิตทั้งหมดแบบ end-to-end: **Build** โซนด้วย Terraform, **Validate** ว่าสามารถ resolve ได้, **Failover** ด้วย DNS load balancer และ **Teardown** เริ่มต้นที่ [Phase 1 — Build](/dns/demo/phase-1-build/) ซึ่งเป็นคู่มือฉบับสมบูรณ์สำหรับการ deploy โซน รวมถึงไฟล์ Terraform ทั้งหมด เวิร์กโฟลว์ CI และ variables และ secrets ที่จำเป็น

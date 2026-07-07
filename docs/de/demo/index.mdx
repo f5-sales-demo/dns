@@ -2,43 +2,43 @@
 title: Demo
 description: >-
   Eine vierphasige, Terraform-gesteuerte DNS-Übung auf F5 Distributed Cloud –
-  Aufbau, Validierung, Failover, Abbau.
+  Aufbauen, Validieren, Failover, Abbau.
 sidebar:
   order: 1
-  label: Übersicht
+  label: Überblick
 i18n:
-  sourceHash: d6cd5c3d82ae
+  sourceHash: 28584ff7eba9
   translator: machine
 ---
 
 import { Aside } from "@astrojs/starlight/components";
 
-Dieser Leitfaden führt durch eine **vollständige DNS-Übung** auf F5 Distributed Cloud, gesteuert durch Terraform.
-Er ist als vier Phasen strukturiert, die ein menschlicher Operator oder ein KI-Assistent von Anfang bis Ende durchführen kann. Jede
-Phase ist idempotent: Eine erneute Ausführung konvergiert zum selben Zustand.
+Diese Anleitung führt durch eine **vollständige DNS-Übung** auf F5 Distributed Cloud, gesteuert durch Terraform.
+Sie ist als vier Phasen strukturiert, die ein menschlicher Operator oder ein KI-Assistent von Anfang bis Ende ausführen kann. Jede
+Phase ist idempotent: Eine erneute Ausführung konvergiert zum gleichen Zustand.
 
 ## Übungsphasen
 
 | Phase | Ziel |
 | --- | --- |
-| [Phase 1 – Aufbau](/dns/demo/phase-1-build/) | Primäre DNS-Zone mit Terraform bereitstellen; Remote-State und CI verbinden |
-| [Phase 2 – Validierung](/dns/demo/phase-2-validate/) | Bestätigen, dass die Zone im öffentlichen Internet auflöst und der Plan idempotent ist |
-| [Phase 3 – Failover](/dns/demo/phase-3-failover/) | Einen DNS-Load-Balancer mit gesundheitsgeprüftem Failover hinzufügen *(ausstehend für das DNS-LB-Modul)* |
-| [Phase 4 – Abbau](/dns/demo/phase-4-teardown/) | Verwaltete Objekte nach ausdrücklicher Bestätigung löschen |
+| [Phase 1 — Aufbauen](/dns/demo/phase-1-build/) | Primäre DNS-Zone mit Terraform bereitstellen; Remote-State und CI verdrahten |
+| [Phase 2 — Validieren](/dns/demo/phase-2-validate/) | Bestätigen, dass die Zone im öffentlichen Internet auflöst und der Plan idempotent ist |
+| [Phase 3 — Failover](/dns/demo/phase-3-failover/) | DNS-Lastverteiler mit gesundheitsgeprüftem Failover hinzufügen *(ausstehend für das DNS-LB-Modul)* |
+| [Phase 4 — Abbau](/dns/demo/phase-4-teardown/) | Verwaltete Objekte nach ausdrücklicher Bestätigung zerstören |
 
 ## Voraussetzungen
 
 - **Terraform** ≥ 1.5.
-- Der **`f5-sales-demo/xcsh`**-Provider ≥ 3.61.15 (die erste Version mit den DNS-Ressourcen),
-  aufgelöst aus der Terraform-Registry – oder ein lokaler Build über `dev_overrides`.
+- Der **`f5-sales-demo/xcsh`**-Provider ≥ 3.62.0 (system-only-Namespaces werden automatisch voreingestellt),
+  aufgelöst aus der Terraform-Registry — oder ein lokaler Build über `dev_overrides`.
 - Ein **F5 XC API-Token** mit Zugriff auf den `system`-Namespace.
 - Die **Azure CLI**, angemeldet mit Contributor-Rechten auf dem Abonnement, für das einmalige
   State-Backend-Bootstrap.
 
 <Aside type="caution">
-Die hier verwendete Domain ist an F5 XC delegiert, sodass die von Ihnen erstellten Einträge im öffentlichen Internet auflösen.
-Verwenden Sie eine Domain, die Ihnen gehört und die Sie verwalten möchten – der Plan ist genau deshalb variablengesteuert, damit Sie auf
-Ihre eigene Domain abzielen können.
+Die hier verwendete Domain ist an F5 XC delegiert, sodass die erstellten Einträge im öffentlichen Internet auflösen.
+Verwenden Sie eine Domain, die Ihnen gehört und die Sie verwalten möchten — der Plan ist bewusst variablengesteuert, damit Sie Ihre
+eigene Domain als Ziel angeben können.
 </Aside>
 
-Beginnen Sie mit [Phase 1 – Aufbau](/dns/demo/phase-1-build/).
+Beginnen Sie mit [Phase 1 — Aufbauen](/dns/demo/phase-1-build/).

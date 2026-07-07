@@ -3,18 +3,18 @@ title: Visão Geral
 description: >-
   Como o caso de uso de DNS do F5 Distributed Cloud é construído — um plano
   Terraform com provedor xcsh que gerencia uma zona DNS delegada, com estado no
-  Azure Blob Storage e CI com GitHub Actions.
+  Azure Blob Storage e CI no GitHub Actions.
 sidebar:
   order: 1
   label: Visão Geral
 i18n:
-  sourceHash: 353ce3cf521f
+  sourceHash: a9809c0f7860
   translator: machine
 ---
 
 import { Aside } from "@astrojs/starlight/components";
 
-Este caso de uso gerencia **DNS autoritativo no F5 Distributed Cloud** com Terraform. Um plano
+Este caso de uso gerencia o **DNS autoritativo no F5 Distributed Cloud** com Terraform. Um plano
 pequeno e reutilizável cria uma zona DNS primária e seus registros para um domínio delegado, mantém
 seu estado no **Azure Blob Storage** e executa plan-on-pull-request / apply-on-merge através do
 **GitHub Actions**.
@@ -24,26 +24,27 @@ seu estado no **Azure Blob Storage** e executa plan-on-pull-request / apply-on-m
 - Um `xcsh_dns_zone` — uma zona **primária** autoritativa no namespace `system` do F5 XC, com
   registros A. O nome da zona é o domínio delegado (uma variável), portanto redirecionar o alvo é
   uma mudança de configuração, não uma mudança de código.
-- Estado remoto do Terraform no Azure, para que as execuções possam ser compartilhadas entre a
-  máquina de um operador e o CI.
+- Estado remoto do Terraform no Azure, para que as execuções sejam compartilháveis entre a máquina
+  de um operador e o CI.
 
 ## Arquitetura
 
 | Camada | Escolha | Por quê |
 | --- | --- | --- |
-| Provedor | `f5-sales-demo/xcsh` (registro Terraform) | Gerado a partir da OpenAPI do F5 XC; gerencia `xcsh_dns_zone` e os recursos de load balancer de DNS. Autentica com um token de API (`Authorization: APIToken <token>`). |
-| Backend de estado | `azurerm` (Azure Blob Storage), autenticação por access-key | Estado durável e compartilhado. A autenticação por access-key é utilizada porque a assinatura concede apenas a função Contributor, que não pode atribuir a função *Storage Blob Data Contributor* necessária para autenticação sem chave (OIDC / Azure AD). |
-| Automação | GitHub Actions | Plan em todo pull request, apply ao fazer merge na `main`. As coordenadas do backend e os inputs vêm das **variáveis** do repositório; as credenciais vêm dos **secrets**. |
+| Provedor | `f5-sales-demo/xcsh` (registro Terraform) | Gerado a partir da OpenAPI do F5 XC; gerencia `xcsh_dns_zone` e os recursos de balanceador de carga DNS. Autentica com um token de API (`Authorization: APIToken <token>`). |
+| Backend de estado | `azurerm` (Azure Blob Storage), autenticação por chave de acesso | Estado durável e compartilhado. A autenticação por chave de acesso é utilizada porque a assinatura concede apenas a função Contributor, que não pode atribuir a função *Storage Blob Data Contributor* exigida pela autenticação sem chave (OIDC / Azure AD). |
+| Automação | GitHub Actions | Plan em todo pull request, apply ao fazer merge para `main`. As coordenadas do backend e as entradas vêm das **variáveis** do repositório; as credenciais vêm dos **secrets**. |
 
 <Aside type="note">
-Todos os objetos de DNS do F5 XC devem residir no namespace `system` — a API rejeita outros
-namespaces. O plano impõe isso com uma regra de validação de variável.
+Todos os objetos DNS do F5 XC devem residir no namespace `system` — a API rejeita outros namespaces.
+O plano não expõe o namespace como entrada: o provedor o fixa em `system` com base na restrição de
+namespace da especificação da API, portanto ele é omitido completamente.
 </Aside>
 
 ## Por onde começar
 
-O arco de [Demonstração](/dns/demo/) percorre o ciclo de vida completo de ponta a ponta: **Build**
-da zona com Terraform, **Validação** de que ela resolve, **Failover** com um load balancer de DNS e
+O arco [Demo](/dns/demo/) percorre todo o ciclo de vida de ponta a ponta: **Build** da zona com
+Terraform, **Validate** para verificar a resolução, **Failover** com um balanceador de carga DNS e
 **Teardown**. Comece pela [Fase 1 — Build](/dns/demo/phase-1-build/), que é um guia completo para
-implantar a zona, incluindo todos os arquivos Terraform, o workflow de CI e as variáveis e secrets
-necessários.
+implantação da zona, incluindo todos os arquivos Terraform, o fluxo de trabalho de CI e as variáveis
+e secrets necessários.

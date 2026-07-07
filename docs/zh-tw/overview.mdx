@@ -1,37 +1,37 @@
 ---
 title: 概覽
 description: >-
-  F5 Distributed Cloud DNS 使用案例的建構方式——一個由 xcsh-provider 管理的 Terraform 計劃，負責管理委派的
-  DNS 區域，狀態儲存於 Azure Blob Storage，並透過 GitHub Actions 執行 CI。
+  F5 Distributed Cloud DNS 使用案例的建構方式——一個使用 xcsh-provider 的 Terraform 計畫，用於管理委派的
+  DNS 區域，狀態儲存於 Azure Blob Storage，並透過 GitHub Actions 進行 CI。
 sidebar:
   order: 1
   label: 概覽
 i18n:
-  sourceHash: 353ce3cf521f
+  sourceHash: a9809c0f7860
   translator: machine
 ---
 
 import { Aside } from "@astrojs/starlight/components";
 
-此使用案例透過 Terraform 管理 **F5 Distributed Cloud 上的權威 DNS**。一個小型、可重複使用的計劃會為委派網域建立主要 DNS 區域及其記錄，將狀態保存於 **Azure Blob Storage**，並透過 **GitHub Actions** 執行「Pull Request 時執行 Plan」及「合併時執行 Apply」的流程。
+此使用案例透過 Terraform 在 **F5 Distributed Cloud 上管理權威 DNS**。一個小型、可重複使用的計畫會為委派網域建立主要 DNS 區域及其記錄，將狀態保存於 **Azure Blob Storage**，並透過 **GitHub Actions** 執行「提交 Pull Request 時執行 plan」與「合併時執行 apply」的流程。
 
-## 管理範圍
+## 管理內容
 
-- 一個 `xcsh_dns_zone`——位於 F5 XC `system` 命名空間中的權威**主要**區域，包含 A 記錄。區域名稱為委派網域（由變數指定），因此重新指定目標屬於設定變更，而非程式碼變更。
-- 儲存於 Azure 的遠端 Terraform 狀態，讓操作人員的本機環境與 CI 之間可共享執行結果。
+- 一個 `xcsh_dns_zone`——位於 F5 XC `system` 命名空間中的權威**主要**區域，包含 A 記錄。區域名稱為委派網域（以變數定義），因此重新指定目標屬於設定變更，而非程式碼變更。
+- 儲存於 Azure 的遠端 Terraform 狀態，使操作人員的本機環境與 CI 之間可共享執行狀態。
 
 ## 架構
 
 | 層級 | 選擇 | 原因 |
 | --- | --- | --- |
-| Provider | `f5-sales-demo/xcsh`（Terraform Registry） | 從 F5 XC OpenAPI 自動生成；管理 `xcsh_dns_zone` 及 DNS 負載平衡器資源。以 API Token 進行驗證（`Authorization: APIToken <token>`）。 |
-| 狀態後端 | `azurerm`（Azure Blob Storage），存取金鑰驗證 | 提供持久且可共享的狀態。採用存取金鑰驗證，原因在於該訂閱僅授予 Contributor 權限，無法指派無金鑰（OIDC / Azure AD）驗證所需的 *Storage Blob Data Contributor* 角色。 |
-| 自動化 | GitHub Actions | 每次 Pull Request 時執行 Plan，合併至 `main` 時執行 Apply。後端協調設定及輸入值來自儲存庫的**變數**；憑證來自**密鑰**。 |
+| Provider | `f5-sales-demo/xcsh`（Terraform 登錄檔） | 從 F5 XC OpenAPI 自動生成；管理 `xcsh_dns_zone` 及 DNS 負載平衡器資源。使用 API 權杖進行驗證（`Authorization: APIToken <token>`）。 |
+| 狀態後端 | `azurerm`（Azure Blob Storage），使用存取金鑰驗證 | 持久且可共享的狀態。採用存取金鑰驗證，原因在於該訂閱僅授予 Contributor 權限，無法指派無金鑰（OIDC / Azure AD）驗證所需的 *Storage Blob Data Contributor* 角色。 |
+| 自動化 | GitHub Actions | 每次 Pull Request 時執行 plan，合併至 `main` 時執行 apply。後端協調資訊與輸入參數來自儲存庫**變數**；憑證來自**密鑰**。 |
 
 <Aside type="note">
-所有 F5 XC DNS 物件必須位於 `system` 命名空間——API 會拒絕其他命名空間的請求。此計劃透過變數驗證規則強制執行此限制。
+所有 F5 XC DNS 物件必須存在於 `system` 命名空間中——API 會拒絕其他命名空間。此計畫不將命名空間作為輸入項目公開：Provider 依據 API 規格的命名空間限制將其固定為 `system`，因此完全省略此項目。
 </Aside>
 
-## 從哪裡開始
+## 從何開始
 
-[示範](/dns/demo/) 章節涵蓋完整的端對端生命週期：**建置**區域（Build）、**驗證**解析結果（Validate）、透過 DNS 負載平衡器進行**故障切換**（Failover），以及**拆除**（Teardown）。請從[第 1 階段——建置](/dns/demo/phase-1-build/)開始，其中包含部署區域的完整操作說明，涵蓋所有 Terraform 檔案、CI 工作流程，以及所需的變數與密鑰。
+[示範](/dns/demo/)流程涵蓋完整的生命週期端到端說明：透過 Terraform **建置**區域、**驗證**其解析結果、使用 DNS 負載平衡器進行**容錯移轉**，以及**拆除**資源。請從[第 1 階段——建置](/dns/demo/phase-1-build/)開始，其中包含部署區域的完整操作說明，涵蓋每個 Terraform 檔案、CI 工作流程，以及所需的變數與密鑰。

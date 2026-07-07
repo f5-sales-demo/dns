@@ -4,7 +4,7 @@ terraform {
   required_providers {
     xcsh = {
       source  = "f5-sales-demo/xcsh"
-      version = ">= 3.61.15"
+      version = ">= 3.62.0"
     }
   }
 }

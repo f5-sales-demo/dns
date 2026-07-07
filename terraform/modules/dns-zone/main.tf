@@ -1,11 +1,11 @@
 # Manages an F5 XC authoritative primary DNS zone with A records.
 #
-# DNS objects must be created in the 'system' namespace, the zone name must be an
-# FQDN the account owns, and record TTLs must be >= 60.
+# The zone name must be an FQDN the account owns, and record TTLs must be >= 60.
+# namespace is omitted: the provider fixes DNS objects to the 'system' namespace
+# (from the API spec's namespace constraint), so it defaults correctly.
 resource "xcsh_dns_zone" "this" {
-  name      = var.domain
-  namespace = var.namespace
-  labels    = var.labels
+  name   = var.domain
+  labels = var.labels
 
   primary {
     default_soa_parameters {}
