@@ -2,35 +2,35 @@
 title: フェーズ 1 — ビルド
 description: >-
   Terraform を使用して F5 Distributed Cloud DNS ゾーンをデプロイします —
-  プランファイル、必要な変数とシークレット、Azure リモート状態、および GitHub Actions ワークフロー。
+  プランファイル、必要な変数とシークレット、Azure リモートステート、および GitHub Actions ワークフローについて説明します。
 sidebar:
   order: 2
   label: フェーズ 1 — ビルド
 i18n:
-  sourceHash: 1b2a3a4d703d
+  sourceHash: 30941b08b7f9
   translator: machine
 ---
 
 import { Steps, Aside, Tabs, TabItem } from "@astrojs/starlight/components";
 
-フェーズ 1 では、Azure Blob Storage にリモート状態をバックアップしながら、Terraform を使用して F5 Distributed Cloud 上に権威ある**プライマリ DNS ゾーン**をデプロイします。このページでは、プランのすべてのファイルを示し、必要な変数とシークレットを説明し、ローカル実行と GitHub Actions パイプラインの両方について解説します。
+フェーズ 1 では、Terraform を使用して F5 Distributed Cloud 上に権威 **プライマリ DNS ゾーン** をデプロイします。このデプロイは Azure Blob Storage のリモートステートによってバックアップされます。このページでは、プランのすべてのファイルを示し、必要な変数とシークレットを説明し、ローカル実行と GitHub Actions パイプラインの両方について解説します。
 
 ## デプロイ内容
 
-- `system` ネームスペース内の委譲されたドメインに対する `xcsh_dns_zone`（`www`、`app`、`api` の A レコードの `demo-records` グループ付き）。
-- Azure Blob Storage コンテナーに保存される Terraform 状態。これにより、ローカルマシンと CI の間で同一の状態が共有されます。
+- `system` 名前空間に、A レコード（`www`、`app`、`api`）の `demo-records` グループを持つ、委任ドメイン用の `xcsh_dns_zone`。
+- Azure Blob Storage コンテナに保存される Terraform ステート。これにより、ローカルマシンと CI の間で同一のステートが共有されます。
 
 <Aside type="note">
-DNS オブジェクトは `system` ネームスペースに作成する必要があります — F5 XC API は他のネームスペースを拒否します。ゾーン名はアカウントが所有するドメインである必要があり、レコードの TTL は最低 60 秒以上でなければなりません。
+DNS オブジェクトは `system` 名前空間に作成する必要があります — F5 XC API は他の名前空間を拒否します。ゾーン名はアカウントが所有するドメインである必要があり、レコードの TTL は少なくとも 60 秒以上でなければなりません。
 </Aside>
 
 ## プラン
 
-プランは `terraform/` 配下にあります。入力を `dns-zone` モジュールに接続するシンプルなルートモジュールです。
+プランは `terraform/` ディレクトリ以下に配置されており、入力を `dns-zone` モジュールに接続する薄いルートモジュールで構成されています。
 
 ### versions.tf
 
-Terraform とプロバイダーをピン留めします。プロバイダーの制約は `>= 3.61.15` — DNS リソースを含む最初のレジストリリリースです。
+Terraform とプロバイダーをピン留めします。プロバイダーの制約は `>= 3.61.15` です — これは DNS リソースを含む最初のレジストリリリースです。
 
 ```hcl
 terraform {
@@ -39,10 +39,10 @@ terraform {
   required_providers {
     xcsh = {
       source = "f5-sales-demo/xcsh"
-      # First registry release that ships the DNS resources (xcsh_dns_zone,
-      # dns_lb_*, geo_location_set). Earlier releases lack them. Locally the
-      # provider is consumed via dev_overrides, which ignores this constraint.
-      version = ">= 3.61.15"
+      # >= 3.61.16: the namespace attribute for system-only DNS resources defaults
+      # to "system" (spec-driven), so it can be omitted. Locally the provider is
+      # consumed via dev_overrides, which ignores this constraint.
+      version = ">= 3.61.16"
     }
   }
 }
@@ -50,7 +50,7 @@ terraform {
 
 ### providers.tf
 
-プロバイダーはコード内で引数を取りません — 環境から認証を行うため、シークレットがコミットされることはありません。
+プロバイダーはコード内で引数を受け取りません — 環境から認証情報を取得するため、シークレットがコミットされることはありません。
 
 ```hcl
 # The xcsh provider authenticates from the environment — no secrets in code.
@@ -66,7 +66,7 @@ provider "xcsh" {}
 
 ### backend.tf
 
-**部分的な** `azurerm` バックエンド: 環境固有の値はハードコードされていません。座標は `init` 時に（ローカルファイルから、または CI の GitHub Actions 変数から）提供されます。
+**部分的な** `azurerm` バックエンド: 環境固有の値はハードコードされていません。座標は `init` 時に（ローカルファイルから、または CI では GitHub Actions 変数から）提供されます。
 
 ```hcl
 terraform {
@@ -87,20 +87,9 @@ terraform {
 
 ### variables.tf
 
-`namespace` は `system` に検証されます。`domain` は必須です（実行時に提供され、ハードコードされることはありません）。`a_records` は各レコード名を IPv4 アドレスにマッピングします。
+`domain` は必須です（実行時に提供され、ハードコードされることはありません）。`a_records` は各レコード名を IPv4 アドレスにマッピングします。`namespace` 変数は存在しません — プロバイダーは API 仕様の制約から DNS オブジェクトを `system` 名前空間に固定するため、ここで設定する必要はありません。
 
 ```hcl
-variable "namespace" {
-  description = "F5 XC namespace for DNS objects. DNS objects MUST live in 'system'."
-  type        = string
-  default     = "system"
-
-  validation {
-    condition     = var.namespace == "system"
-    error_message = "F5 XC DNS objects must be created in the 'system' namespace."
-  }
-}
-
 variable "domain" {
   description = "DNS zone FQDN (required; supplied via TF_VAR_domain / a GitHub variable / tfvars)."
   type        = string
@@ -127,7 +116,7 @@ variable "a_records" {
 ```
 
 <Aside type="tip">
-デフォルトの A レコードは RFC 5737 のドキュメント用アドレス（`203.0.113.0/24`）を使用しています。これらはルーティング不可能なアドレスです。ライブデモの際は実際のターゲットに置き換えてください。
+デフォルトの A レコードは RFC 5737 のドキュメント用アドレス（`203.0.113.0/24`）を使用しており、これらはルーティング不可能です。ライブデモには実際のターゲットに置き換えてください。
 </Aside>
 
 ### main.tf と dns-zone モジュール
@@ -139,19 +128,17 @@ module "dns_zone" {
   source = "./modules/dns-zone"
 
   domain    = var.domain
-  namespace = var.namespace
   labels    = var.labels
   a_records = var.a_records
 }
 ```
 
-モジュールはゾーンを作成します。`dynamic "rr_set"` ブロックが `a_records` マップをエントリーごとに 1 つのレコードセットに変換します。
+このモジュールはゾーンを作成します（名前空間は省略されており、プロバイダーはデフォルトで `system` に設定します）。`dynamic "rr_set"` ブロックは `a_records` マップをエントリごとに 1 つのレコードセットに変換します。
 
 ```hcl
 resource "xcsh_dns_zone" "this" {
-  name      = var.domain
-  namespace = var.namespace
-  labels    = var.labels
+  name   = var.domain
+  labels = var.labels
 
   primary {
     default_soa_parameters {}
@@ -176,18 +163,18 @@ resource "xcsh_dns_zone" "this" {
 }
 ```
 
-ルートの `outputs.tf` は、モジュールからゾーン名と F5 XC 識別子を再エクスポートします。
+ルートの `outputs.tf` はモジュールからゾーン名と F5 XC 識別子を再エクスポートします。
 
 ## 必要な変数とシークレット
 
-環境固有の値は `.tf` ファイルに組み込まれていません。すべては実行時に提供されます — CI では GitHub Actions の**変数**と**シークレット**から、ローカルではローカルファイルと環境変数から提供されます。
+環境固有の値は `.tf` ファイルに含まれていません。すべては実行時に供給されます — CI では GitHub Actions の**変数**と**シークレット**から、またはローカルファイルと環境変数から提供されます。
 
-| 値 | 用途 | CI ソース | ローカルソース |
+| 値 | 目的 | CI ソース | ローカルソース |
 | --- | --- | --- | --- |
-| `resource_group_name`, `storage_account_name`, `container_name`, `key` | azurerm バックエンドの座標 | リポジトリ**変数** `TFSTATE_RESOURCE_GROUP`、`TFSTATE_STORAGE_ACCOUNT`、`TFSTATE_CONTAINER`、`TFSTATE_KEY`（`-backend-config` 経由で渡される） | `backend.hcl`（`backend.hcl.example` をコピー、gitignore 対象） |
-| `domain`, `namespace` | Terraform 入力 | リポジトリ**変数** `DNS_DOMAIN`、`DNS_NAMESPACE`（`TF_VAR_domain` / `TF_VAR_namespace` として） | `terraform.tfvars`（サンプルをコピー）または `TF_VAR_*` |
+| `resource_group_name`、`storage_account_name`、`container_name`、`key` | azurerm バックエンド座標 | リポジトリ**変数** `TFSTATE_RESOURCE_GROUP`、`TFSTATE_STORAGE_ACCOUNT`、`TFSTATE_CONTAINER`、`TFSTATE_KEY`（`-backend-config` 経由で渡される） | `backend.hcl`（`backend.hcl.example` をコピー; gitignore 対象） |
+| `domain` | Terraform 入力 | リポジトリ**変数** `DNS_DOMAIN`（`TF_VAR_domain` として） | `terraform.tfvars`（例をコピー）または `TF_VAR_domain` |
 | `ARM_ACCESS_KEY` | azurerm バックエンド認証（ストレージアカウントキー） | リポジトリ**シークレット** | `export ARM_ACCESS_KEY=...` |
-| `XCSH_API_URL`, `XCSH_API_TOKEN` | xcsh プロバイダー認証 | リポジトリ**シークレット** | `export XCSH_API_URL=... XCSH_API_TOKEN=...` |
+| `XCSH_API_URL`、`XCSH_API_TOKEN` | xcsh プロバイダー認証 | リポジトリ**シークレット** | `export XCSH_API_URL=... XCSH_API_TOKEN=...` |
 
 リポジトリに同梱されている 2 つのサンプルファイル:
 
@@ -205,8 +192,7 @@ key                  = "dns.tfstate"
 <TabItem label="terraform.tfvars.example">
 
 ```hcl
-namespace = "system"
-domain    = "f5-sales-demo.com"
+domain = "f5-sales-demo.com"
 
 labels = {
   managed_by = "terraform"
@@ -224,12 +210,12 @@ a_records = {
 </Tabs>
 
 <Aside type="caution">
-バックエンド認証では、キーレス OIDC / Azure AD ではなく、ストレージアカウントアクセスキー（`ARM_ACCESS_KEY`）を使用します。キーレスデータプレーンアクセスには *Storage Blob Data Contributor* ロールが必要ですが、Contributor のみのサブスクリプションではそのロールを割り当てることができません。アクセスキーは環境または GitHub シークレットにのみ存在し、コミットされることはありません。
+バックエンド認証は、キーレス OIDC / Azure AD ではなく、ストレージアカウントアクセスキー（`ARM_ACCESS_KEY`）を使用します。キーレスデータプレーンアクセスには *Storage Blob Data Contributor* ロールが必要ですが、Contributor のみのサブスクリプションではそのロールを割り当てることができません。アクセスキーは環境または GitHub シークレット内にのみ存在し、コミットされることはありません。
 </Aside>
 
-## Azure 状態バックエンドのブートストラップ
+## Azure ステートバックエンドのブートストラップ
 
-バックエンドストレージは自身のブートストラップを保存できないため、認証済みの Azure CLI セッションを使用して、帯域外で一度だけ作成する必要があります。リポジトリには `scripts/bootstrap-azure-state.sh` が含まれています。
+バックエンドストレージは自身のブートストラップを保存できないため、認証済みの Azure CLI セッションを使用して、帯域外で一度だけ作成します。リポジトリには `scripts/bootstrap-azure-state.sh` が同梱されています。
 
 ```sh
 az group create --name f5-sales-demo-tfstate --location eastus2 \
@@ -254,7 +240,7 @@ az storage container create --name tfstate \
   --account-name f5salesdemotfstate --auth-mode key --account-key "$KEY"
 ```
 
-次に、ローカル実行用のキーをエクスポートし、プロバイダー認証情報とともに GitHub シークレットとして設定します。
+次に、ローカル実行用にキーをエクスポートし、GitHub シークレットとして設定します（プロバイダー認証情報も同様に設定します）。
 
 ```sh
 export ARM_ACCESS_KEY="$KEY"
@@ -267,7 +253,7 @@ gh secret set XCSH_API_TOKEN -R f5-sales-demo/dns
 
 <Steps>
 
-1. **入力を設定します。** サンプルをコピーして値を入力します。
+1. **入力を設定します。** サンプルファイルをコピーして値を入力します。
 
    ```sh
    cp terraform/backend.hcl.example terraform/backend.hcl
@@ -282,21 +268,21 @@ gh secret set XCSH_API_TOKEN -R f5-sales-demo/dns
    export ARM_ACCESS_KEY="<storage-account-key>"
    ```
 
-3. 部分設定でバックエンドを**初期化**します。
+3. 部分的な設定でバックエンドを**初期化**します。
 
    ```sh
    cd terraform
    terraform init -backend-config=backend.hcl
    ```
 
-4. **フォーマットを確認して検証します。**
+4. **フォーマットチェックとバリデーションを実行します。**
 
    ```sh
    terraform fmt -check -recursive
    terraform validate
    ```
 
-5. **プランとアプライを実行します。**
+5. **プランと適用を実行します。**
 
    ```sh
    terraform plan
@@ -305,11 +291,11 @@ gh secret set XCSH_API_TOKEN -R f5-sales-demo/dns
 
 </Steps>
 
-アプライが成功するとゾーンが作成され、Azure コンテナーに状態が書き込まれます。[フェーズ 2 — 検証](/dns/demo/phase-2-validate/)に進んで、解決が正常に行われることを確認してください。
+適用が成功すると、ゾーンが作成され、Azure コンテナにステートが書き込まれます。[フェーズ 2 — 検証](/dns/demo/phase-2-validate/)に進んで、名前解決が正常に動作することを確認してください。
 
 ## 継続的インテグレーション
 
-`.github/workflows/terraform.yml` ワークフローは、すべてのプルリクエストで**プラン**を実行し、`main` へのマージで**アプライ**を実行します。リポジトリ変数からバックエンドの座標と入力を読み取り、シークレットから認証情報を読み取り、それぞれを必要なステップにのみ注入します。また、コンカレンシーグループで実行をシリアル化することで、2 つのアプライが共有状態ブロブ上で競合することを防ぎます。
+`.github/workflows/terraform.yml` ワークフローは、すべてのプルリクエストで **plan** を実行し、`main` へのマージ時に **apply** を実行します。リポジトリ変数からバックエンド座標と入力を読み取り、シークレットから認証情報を取得し、それぞれを必要なステップにのみ注入します。また、共有ステートブロブに対して 2 つの apply が競合しないよう、コンカレンシーグループによって実行をシリアル化します。
 
 ```yaml
 name: Terraform
@@ -373,7 +359,6 @@ jobs:
           XCSH_API_URL: ${{ secrets.XCSH_API_URL }}
           XCSH_API_TOKEN: ${{ secrets.XCSH_API_TOKEN }}
           TF_VAR_domain: ${{ vars.DNS_DOMAIN }}
-          TF_VAR_namespace: ${{ vars.DNS_NAMESPACE }}
         run: terraform plan -input=false -no-color
 
       - name: Apply
@@ -383,8 +368,7 @@ jobs:
           XCSH_API_URL: ${{ secrets.XCSH_API_URL }}
           XCSH_API_TOKEN: ${{ secrets.XCSH_API_TOKEN }}
           TF_VAR_domain: ${{ vars.DNS_DOMAIN }}
-          TF_VAR_namespace: ${{ vars.DNS_NAMESPACE }}
         run: terraform apply -input=false -auto-approve -no-color
 ```
 
-アクションはコミット SHA にピン留めされており（バージョンコメント付き）、シークレットはジョブ全体ではなく `init`、`plan`、`apply` の各ステップにスコープされています。
+アクションはコミット SHA にピン留めされており（バージョンコメント付き）、シークレットはジョブ全体ではなく `init`、`plan`、`apply` の各ステップにスコープが限定されています。

@@ -2,35 +2,39 @@
 title: चरण 1 — निर्माण
 description: >-
   Terraform के साथ F5 Distributed Cloud DNS ज़ोन तैनात करें — प्लान फ़ाइलें,
-  आवश्यक चर और गोपनीय जानकारी, Azure रिमोट स्टेट, और GitHub Actions वर्कफ़्लो।
+  आवश्यक चर और रहस्य, Azure रिमोट स्टेट, और GitHub Actions वर्कफ़्लो।
 sidebar:
   order: 2
   label: चरण 1 — निर्माण
 i18n:
-  sourceHash: 1b2a3a4d703d
+  sourceHash: 30941b08b7f9
   translator: machine
 ---
 
 import { Steps, Aside, Tabs, TabItem } from "@astrojs/starlight/components";
 
-चरण 1, Terraform के साथ F5 Distributed Cloud पर एक आधिकारिक **प्राथमिक DNS ज़ोन** तैनात करता है, जो Azure Blob Storage में रिमोट स्टेट द्वारा समर्थित है। यह पृष्ठ प्लान की प्रत्येक फ़ाइल दिखाता है, आवश्यक चर और गोपनीय जानकारी स्पष्ट करता है, और स्थानीय रन तथा GitHub Actions पाइपलाइन दोनों को कवर करता है।
+चरण 1 Terraform के साथ F5 Distributed Cloud पर एक आधिकारिक **प्राथमिक DNS ज़ोन** तैनात करता है, जो
+Azure Blob Storage में रिमोट स्टेट द्वारा समर्थित है। यह पृष्ठ प्लान की प्रत्येक फ़ाइल दिखाता है, आवश्यक
+चर और रहस्यों की व्याख्या करता है, और स्थानीय रन तथा GitHub Actions पाइपलाइन दोनों को कवर करता है।
 
 ## आप क्या तैनात करते हैं
 
-- `system` नेमस्पेस में आपके प्रत्यायोजित डोमेन के लिए एक `xcsh_dns_zone`, A रिकॉर्ड (`www`, `app`, `api`) के `demo-records` समूह के साथ।
+- आपके डेलिगेटेड डोमेन के लिए `xcsh_dns_zone`, `system` नेमस्पेस में, A रिकॉर्ड (`www`, `app`, `api`) के एक `demo-records` समूह के साथ।
 - Azure Blob Storage कंटेनर में संग्रहीत Terraform स्टेट, ताकि आपकी मशीन और CI के बीच एक ही स्टेट साझा हो।
 
 <Aside type="note">
-DNS ऑब्जेक्ट `system` नेमस्पेस में बनाए जाने चाहिए — F5 XC कंसोल API अन्य नेमस्पेस को अस्वीकार करता है। ज़ोन का नाम वह डोमेन होना चाहिए जो आपके खाते के स्वामित्व में हो, और रिकॉर्ड TTL कम से कम 60 सेकंड होने चाहिए।
+DNS ऑब्जेक्ट `system` नेमस्पेस में बनाए जाने चाहिए — F5 XC कंसोल API अन्य नेमस्पेस को अस्वीकार करता है।
+ज़ोन का नाम वह डोमेन होना चाहिए जिसका आपका खाता स्वामी है, और रिकॉर्ड TTL कम से कम 60 सेकंड होनी चाहिए।
 </Aside>
 
 ## प्लान
 
-प्लान `terraform/` के अंतर्गत स्थित है: एक पतला रूट मॉड्यूल जो इनपुट को `dns-zone` मॉड्यूल में जोड़ता है।
+प्लान `terraform/` के अंतर्गत रहता है: एक पतला रूट मॉड्यूल जो इनपुट को `dns-zone` मॉड्यूल में जोड़ता है।
 
 ### versions.tf
 
-Terraform और प्रोवाइडर को पिन करता है। प्रोवाइडर की बाधा `>= 3.61.15` है — रजिस्ट्री का पहला रिलीज़ जो DNS संसाधन भेजता है।
+Terraform और प्रोवाइडर को पिन करता है। प्रोवाइडर बाधा `>= 3.61.15` है — पहला रजिस्ट्री रिलीज़
+जो DNS संसाधन भेजता है।
 
 ```hcl
 terraform {
@@ -39,10 +43,10 @@ terraform {
   required_providers {
     xcsh = {
       source = "f5-sales-demo/xcsh"
-      # First registry release that ships the DNS resources (xcsh_dns_zone,
-      # dns_lb_*, geo_location_set). Earlier releases lack them. Locally the
-      # provider is consumed via dev_overrides, which ignores this constraint.
-      version = ">= 3.61.15"
+      # >= 3.61.16: the namespace attribute for system-only DNS resources defaults
+      # to "system" (spec-driven), so it can be omitted. Locally the provider is
+      # consumed via dev_overrides, which ignores this constraint.
+      version = ">= 3.61.16"
     }
   }
 }
@@ -50,7 +54,8 @@ terraform {
 
 ### providers.tf
 
-प्रोवाइडर कोड में कोई तर्क नहीं लेता — यह पर्यावरण से प्रमाणीकरण करता है, इसलिए कोई गोपनीय जानकारी कमिट नहीं होती।
+प्रोवाइडर कोड में कोई तर्क नहीं लेता — यह पर्यावरण से प्रमाणीकरण करता है, इसलिए कोई रहस्य
+कमिट नहीं किया जाता।
 
 ```hcl
 # The xcsh provider authenticates from the environment — no secrets in code.
@@ -66,7 +71,8 @@ provider "xcsh" {}
 
 ### backend.tf
 
-एक **आंशिक** `azurerm` बैकएंड: कोई भी पर्यावरण-विशिष्ट मान हार्डकोड नहीं किए गए हैं। निर्देशांक `init` समय पर आपूर्ति किए जाते हैं (एक स्थानीय फ़ाइल से, या CI में GitHub Actions चर से)।
+एक **आंशिक** `azurerm` बैकएंड: कोई पर्यावरण-विशिष्ट मान हार्डकोड नहीं किया गया। निर्देशांक
+`init` समय पर आपूर्ति किए जाते हैं (एक स्थानीय फ़ाइल से, या CI में GitHub Actions चर से)।
 
 ```hcl
 terraform {
@@ -87,20 +93,11 @@ terraform {
 
 ### variables.tf
 
-`namespace` को `system` पर सत्यापित किया गया है; `domain` आवश्यक है (रनटाइम पर आपूर्ति की गई, कभी हार्डकोड नहीं); `a_records` प्रत्येक रिकॉर्ड नाम को उसके IPv4 पतों पर मैप करता है।
+`domain` आवश्यक है (रनटाइम पर आपूर्ति किया जाता है, कभी हार्डकोड नहीं); `a_records` प्रत्येक रिकॉर्ड नाम को
+उसके IPv4 पतों से मैप करता है। कोई `namespace` चर नहीं है — प्रोवाइडर API स्पेक की बाधा से DNS
+ऑब्जेक्ट को `system` नेमस्पेस में स्थिर करता है, इसलिए इसे यहाँ कभी कॉन्फ़िगर नहीं किया जाता।
 
 ```hcl
-variable "namespace" {
-  description = "F5 XC namespace for DNS objects. DNS objects MUST live in 'system'."
-  type        = string
-  default     = "system"
-
-  validation {
-    condition     = var.namespace == "system"
-    error_message = "F5 XC DNS objects must be created in the 'system' namespace."
-  }
-}
-
 variable "domain" {
   description = "DNS zone FQDN (required; supplied via TF_VAR_domain / a GitHub variable / tfvars)."
   type        = string
@@ -127,7 +124,8 @@ variable "a_records" {
 ```
 
 <Aside type="tip">
-डिफ़ॉल्ट A रिकॉर्ड RFC 5737 दस्तावेज़ीकरण पते (`203.0.113.0/24`) उपयोग करते हैं, जो रूट करने योग्य नहीं हैं। लाइव डेमो के लिए उन्हें वास्तविक लक्ष्यों से बदलें।
+डिफ़ॉल्ट A रिकॉर्ड RFC 5737 दस्तावेज़ीकरण पते (`203.0.113.0/24`) उपयोग करते हैं, जो रूटेबल नहीं हैं।
+लाइव डेमो के लिए उन्हें वास्तविक लक्ष्यों से बदलें।
 </Aside>
 
 ### main.tf और dns-zone मॉड्यूल
@@ -139,19 +137,18 @@ module "dns_zone" {
   source = "./modules/dns-zone"
 
   domain    = var.domain
-  namespace = var.namespace
   labels    = var.labels
   a_records = var.a_records
 }
 ```
 
-मॉड्यूल ज़ोन बनाता है। एक `dynamic "rr_set"` ब्लॉक `a_records` मैप को प्रति प्रविष्टि एक रिकॉर्ड सेट में बदलता है:
+मॉड्यूल ज़ोन बनाता है (नेमस्पेस छोड़ा गया है — प्रोवाइडर इसे `system` पर डिफ़ॉल्ट करता है)। एक
+`dynamic "rr_set"` ब्लॉक `a_records` मैप को प्रति प्रविष्टि एक रिकॉर्ड सेट में बदलता है:
 
 ```hcl
 resource "xcsh_dns_zone" "this" {
-  name      = var.domain
-  namespace = var.namespace
-  labels    = var.labels
+  name   = var.domain
+  labels = var.labels
 
   primary {
     default_soa_parameters {}
@@ -178,16 +175,17 @@ resource "xcsh_dns_zone" "this" {
 
 रूट `outputs.tf` मॉड्यूल से ज़ोन नाम और F5 XC पहचानकर्ता को पुनः निर्यात करता है।
 
-## आवश्यक चर और गोपनीय जानकारी
+## आवश्यक चर और रहस्य
 
-`.tf` फ़ाइलों में कोई भी पर्यावरण-विशिष्ट जानकारी समाहित नहीं है। सब कुछ रनटाइम पर आपूर्ति किया जाता है — CI में GitHub Actions **चर** और **गोपनीय जानकारी** से, या स्थानीय फ़ाइलों और पर्यावरण चरों से।
+`.tf` फ़ाइलों में कोई पर्यावरण-विशिष्ट जानकारी नहीं बेक की गई है। सब कुछ रनटाइम पर आपूर्ति
+किया जाता है — CI में GitHub Actions **चर** और **रहस्य** से, या स्थानीय फ़ाइलों और पर्यावरण चरों से।
 
 | मान | उद्देश्य | CI स्रोत | स्थानीय स्रोत |
 | --- | --- | --- | --- |
 | `resource_group_name`, `storage_account_name`, `container_name`, `key` | azurerm बैकएंड निर्देशांक | रिपॉज़िटरी **चर** `TFSTATE_RESOURCE_GROUP`, `TFSTATE_STORAGE_ACCOUNT`, `TFSTATE_CONTAINER`, `TFSTATE_KEY` (`-backend-config` के माध्यम से पारित) | `backend.hcl` (`backend.hcl.example` की प्रतिलिपि बनाएं; gitignored) |
-| `domain`, `namespace` | Terraform इनपुट | रिपॉज़िटरी **चर** `DNS_DOMAIN`, `DNS_NAMESPACE` (`TF_VAR_domain` / `TF_VAR_namespace` के रूप में) | `terraform.tfvars` (उदाहरण की प्रतिलिपि बनाएं) या `TF_VAR_*` |
-| `ARM_ACCESS_KEY` | azurerm बैकएंड प्रमाणीकरण (स्टोरेज खाता कुंजी) | रिपॉज़िटरी **गोपनीय जानकारी** | `export ARM_ACCESS_KEY=...` |
-| `XCSH_API_URL`, `XCSH_API_TOKEN` | xcsh प्रोवाइडर प्रमाणीकरण | रिपॉज़िटरी **गोपनीय जानकारी** | `export XCSH_API_URL=... XCSH_API_TOKEN=...` |
+| `domain` | Terraform इनपुट | रिपॉज़िटरी **चर** `DNS_DOMAIN` (`TF_VAR_domain` के रूप में) | `terraform.tfvars` (उदाहरण की प्रतिलिपि) या `TF_VAR_domain` |
+| `ARM_ACCESS_KEY` | azurerm बैकएंड ऑथ (स्टोरेज अकाउंट की) | रिपॉज़िटरी **रहस्य** | `export ARM_ACCESS_KEY=...` |
+| `XCSH_API_URL`, `XCSH_API_TOKEN` | xcsh प्रोवाइडर ऑथ | रिपॉज़िटरी **रहस्य** | `export XCSH_API_URL=... XCSH_API_TOKEN=...` |
 
 रेपो में शामिल दो उदाहरण फ़ाइलें:
 
@@ -205,8 +203,7 @@ key                  = "dns.tfstate"
 <TabItem label="terraform.tfvars.example">
 
 ```hcl
-namespace = "system"
-domain    = "f5-sales-demo.com"
+domain = "f5-sales-demo.com"
 
 labels = {
   managed_by = "terraform"
@@ -224,12 +221,16 @@ a_records = {
 </Tabs>
 
 <Aside type="caution">
-बैकएंड प्रमाणीकरण कीलेस OIDC / Azure AD के बजाय स्टोरेज खाता एक्सेस कुंजी (`ARM_ACCESS_KEY`) का उपयोग करता है। कीलेस डेटा-प्लेन एक्सेस के लिए *Storage Blob Data Contributor* भूमिका की आवश्यकता होती है, जो Contributor-only सदस्यता असाइन नहीं कर सकती। एक्सेस कुंजी केवल पर्यावरण या GitHub गोपनीय जानकारी में रहती है — यह कभी कमिट नहीं होती।
+बैकएंड ऑथ स्टोरेज अकाउंट एक्सेस की (`ARM_ACCESS_KEY`) का उपयोग करता है, न कि कीलेस OIDC / Azure
+AD का। कीलेस डेटा-प्लेन एक्सेस के लिए *Storage Blob Data Contributor* भूमिका की आवश्यकता है, जिसे
+Contributor-only सब्सक्रिप्शन असाइन नहीं कर सकता। एक्सेस की केवल पर्यावरण या GitHub रहस्य में
+रहती है — इसे कभी कमिट नहीं किया जाता।
 </Aside>
 
 ## Azure स्टेट बैकएंड को बूटस्ट्रैप करें
 
-बैकएंड स्टोरेज अपने स्वयं के बूटस्ट्रैप को संग्रहीत नहीं कर सकता, इसलिए इसे एक बार, बाहर से, प्रमाणित Azure CLI सत्र के साथ बनाएं। रेपो `scripts/bootstrap-azure-state.sh` प्रदान करता है:
+बैकएंड स्टोरेज अपना स्वयं का बूटस्ट्रैप संग्रहीत नहीं कर सकता, इसलिए इसे एक बार, बाहर से,
+प्रमाणित Azure CLI सत्र के साथ बनाएं। रेपो `scripts/bootstrap-azure-state.sh` भेजता है:
 
 ```sh
 az group create --name f5-sales-demo-tfstate --location eastus2 \
@@ -254,7 +255,7 @@ az storage container create --name tfstate \
   --account-name f5salesdemotfstate --auth-mode key --account-key "$KEY"
 ```
 
-फिर स्थानीय रन के लिए कुंजी निर्यात करें, और इसे (प्रोवाइडर क्रेडेंशियल के साथ) GitHub गोपनीय जानकारी के रूप में सेट करें:
+फिर स्थानीय रन के लिए की को एक्सपोर्ट करें, और इसे (प्रोवाइडर क्रेडेंशियल के साथ) GitHub रहस्य के रूप में सेट करें:
 
 ```sh
 export ARM_ACCESS_KEY="$KEY"
@@ -274,7 +275,7 @@ gh secret set XCSH_API_TOKEN -R f5-sales-demo/dns
    cp terraform/terraform.tfvars.example terraform/terraform.tfvars
    ```
 
-2. **क्रेडेंशियल निर्यात करें:**
+2. **क्रेडेंशियल एक्सपोर्ट करें:**
 
    ```sh
    export XCSH_API_URL="https://<tenant>.console.ves.volterra.io"
@@ -282,21 +283,21 @@ gh secret set XCSH_API_TOKEN -R f5-sales-demo/dns
    export ARM_ACCESS_KEY="<storage-account-key>"
    ```
 
-3. आंशिक कॉन्फ़िग के साथ बैकएंड को **इनिशियलाइज़** करें:
+3. **आंशिक कॉन्फ़िग के साथ बैकएंड को इनिशियलाइज़** करें:
 
    ```sh
    cd terraform
    terraform init -backend-config=backend.hcl
    ```
 
-4. **फ़ॉर्मेटिंग जांचें और सत्यापित करें:**
+4. **फ़ॉर्मेटिंग जांचें और वैलिडेट करें:**
 
    ```sh
    terraform fmt -check -recursive
    terraform validate
    ```
 
-5. **प्लान करें और लागू करें:**
+5. **प्लान और अप्लाई करें:**
 
    ```sh
    terraform plan
@@ -305,11 +306,15 @@ gh secret set XCSH_API_TOKEN -R f5-sales-demo/dns
 
 </Steps>
 
-एक सफल apply ज़ोन बनाता है और Azure कंटेनर में स्टेट लिखता है। यह पुष्टि करने के लिए कि यह रिज़ॉल्व होता है, [चरण 2 — सत्यापन](/dns/demo/phase-2-validate/) पर जाएं।
+एक सफल अप्लाई ज़ोन बनाता है और Azure कंटेनर में स्टेट लिखता है। यह पुष्टि करने के लिए कि यह रिज़ॉल्व होता है,
+[चरण 2 — सत्यापन](/dns/demo/phase-2-validate/) पर जारी रखें।
 
-## सतत एकीकरण
+## निरंतर एकीकरण
 
-`.github/workflows/terraform.yml` वर्कफ़्लो प्रत्येक पुल रिक्वेस्ट पर एक **plan** और `main` पर मर्ज होने पर एक **apply** चलाता है। यह रिपॉज़िटरी चर से बैकएंड निर्देशांक और इनपुट, तथा गोपनीय जानकारी से क्रेडेंशियल पढ़ता है, प्रत्येक को केवल उस चरण में इंजेक्ट करता है जिसे इसकी आवश्यकता है, और साझा स्टेट ब्लॉब पर दो apply कभी न टकराएं इसके लिए एक concurrency समूह पर रन को क्रमबद्ध करता है।
+`.github/workflows/terraform.yml` वर्कफ़्लो प्रत्येक पुल रिक्वेस्ट पर **plan** और `main` में मर्ज होने पर
+**apply** चलाता है। यह रिपॉज़िटरी चर से बैकएंड निर्देशांक और इनपुट, तथा रहस्यों से क्रेडेंशियल पढ़ता है,
+प्रत्येक को केवल उस स्टेप में इंजेक्ट करता है जिसे इसकी आवश्यकता है, और साझा स्टेट ब्लॉब पर दो अप्लाई
+कभी प्रतिस्पर्धा न करें इसलिए कंकरेंसी ग्रुप पर रन को क्रमबद्ध करता है।
 
 ```yaml
 name: Terraform
@@ -373,7 +378,6 @@ jobs:
           XCSH_API_URL: ${{ secrets.XCSH_API_URL }}
           XCSH_API_TOKEN: ${{ secrets.XCSH_API_TOKEN }}
           TF_VAR_domain: ${{ vars.DNS_DOMAIN }}
-          TF_VAR_namespace: ${{ vars.DNS_NAMESPACE }}
         run: terraform plan -input=false -no-color
 
       - name: Apply
@@ -383,8 +387,8 @@ jobs:
           XCSH_API_URL: ${{ secrets.XCSH_API_URL }}
           XCSH_API_TOKEN: ${{ secrets.XCSH_API_TOKEN }}
           TF_VAR_domain: ${{ vars.DNS_DOMAIN }}
-          TF_VAR_namespace: ${{ vars.DNS_NAMESPACE }}
         run: terraform apply -input=false -auto-approve -no-color
 ```
 
-actions को commit SHA (संस्करण टिप्पणियों के साथ) पर पिन किया गया है, और गोपनीय जानकारी को पूरे job के बजाय `init`, `plan`, और `apply` चरणों तक सीमित किया गया है।
+एक्शन को कमिट SHA पर पिन किया गया है (संस्करण टिप्पणियों के साथ), और रहस्य पूरे जॉब के बजाय
+`init`, `plan`, और `apply` स्टेप तक सीमित हैं।

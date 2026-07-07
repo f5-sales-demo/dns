@@ -1,37 +1,37 @@
 ---
 title: 概述
 description: >-
-  F5 Distributed Cloud DNS 用例的构建方式——一个使用 xcsh-provider 的 Terraform 计划，用于管理委派的
-  DNS 区域，状态存储于 Azure Blob Storage，并通过 GitHub Actions 实现 CI。
+  F5 Distributed Cloud DNS 用例的构建方式 — 一个使用 xcsh-provider 的 Terraform 计划，用于管理委派的
+  DNS 区域，状态存储在 Azure Blob Storage 中，并通过 GitHub Actions 实现 CI。
 sidebar:
   order: 1
   label: 概述
 i18n:
-  sourceHash: 353ce3cf521f
+  sourceHash: a9809c0f7860
   translator: machine
 ---
 
 import { Aside } from "@astrojs/starlight/components";
 
-本用例使用 Terraform 在 **F5 Distributed Cloud 上管理权威 DNS**。一个精简且可复用的计划为委派域创建主要 DNS 区域及其记录，将状态保存在 **Azure Blob Storage** 中，并通过 **GitHub Actions** 实现拉取请求时执行 plan、合并时执行 apply 的自动化流程。
+此用例使用 Terraform 管理 **F5 Distributed Cloud 上的权威 DNS**。一个精简、可复用的计划为委派域创建主 DNS 区域及其记录，将状态保存在 **Azure Blob Storage** 中，并通过 **GitHub Actions** 实现拉取请求时执行 plan、合并时执行 apply 的自动化流程。
 
 ## 管理内容
 
-- 一个 `xcsh_dns_zone`——位于 F5 XC `system` 命名空间中的权威**主要**区域，包含 A 记录。区域名称为委派域（通过变量配置），因此重新定向目标只需修改配置，而无需修改代码。
-- 存储于 Azure 的远程 Terraform 状态，使运维人员的本地机器与 CI 之间可共享执行环境。
+- 一个 `xcsh_dns_zone` — F5 XC `system` 命名空间中的权威**主**区域，包含 A 记录。区域名称为委派域（一个变量），因此重新定向目标只需修改配置，而无需修改代码。
+- Azure 中的远程 Terraform 状态，使运行结果可在操作人员本地机器与 CI 之间共享。
 
 ## 架构
 
 | 层级 | 选择 | 原因 |
 | --- | --- | --- |
-| Provider | `f5-sales-demo/xcsh`（Terraform 注册表） | 基于 F5 XC OpenAPI 生成；管理 `xcsh_dns_zone` 及 DNS 负载均衡器资源。使用 API 令牌进行身份验证（`Authorization: APIToken <token>`）。 |
-| 状态后端 | `azurerm`（Azure Blob Storage），访问密钥认证 | 持久化、可共享的状态存储。使用访问密钥认证，原因在于该订阅仅授予了 Contributor 角色，无法分配无密钥（OIDC / Azure AD）认证所需的 *Storage Blob Data Contributor* 角色。 |
-| 自动化 | GitHub Actions | 每次拉取请求时执行 plan，合并到 `main` 时执行 apply。后端协调参数和输入来自仓库**变量**；凭据来自**密钥**。 |
+| Provider | `f5-sales-demo/xcsh`（Terraform 注册表） | 从 F5 XC OpenAPI 生成，管理 `xcsh_dns_zone` 及 DNS 负载均衡器资源。使用 API 令牌进行身份验证（`Authorization: APIToken <token>`）。 |
+| 状态后端 | `azurerm`（Azure Blob Storage），访问密钥认证 | 持久化、可共享的状态存储。使用访问密钥认证，原因是该订阅仅授予了 Contributor 权限，无法分配无密钥（OIDC / Azure AD）认证所需的 *Storage Blob Data Contributor* 角色。 |
+| 自动化 | GitHub Actions | 每次拉取请求时执行 plan，合并到 `main` 时执行 apply。后端协调信息和输入参数来自仓库**变量**，凭据来自**密钥**。 |
 
 <Aside type="note">
-所有 F5 XC DNS 对象必须位于 `system` 命名空间中——API 会拒绝其他命名空间。该计划通过变量验证规则强制执行此约束。
+所有 F5 XC DNS 对象必须位于 `system` 命名空间中 — API 会拒绝其他命名空间。该计划不将命名空间作为输入项公开：provider 根据 API 规范的命名空间约束将其固定为 `system`，因此完全省略了该参数。
 </Aside>
 
 ## 从哪里开始
 
-[演示](/dns/demo/)章节将端到端地演示完整生命周期：**构建**区域（使用 Terraform）、**验证**解析是否正常、通过 DNS 负载均衡器实现**故障转移**，以及**销毁**资源。请从[阶段 1——构建](/dns/demo/phase-1-build/)开始，该阶段提供了部署区域的完整操作指南，包括所有 Terraform 文件、CI 工作流以及所需的变量和密钥。
+[演示](/dns/demo/)部分将完整介绍整个生命周期的端到端流程：使用 Terraform **构建**区域、**验证**其解析结果、通过 DNS 负载均衡器实现**故障转移**，以及**销毁**资源。请从[第 1 阶段 — 构建](/dns/demo/phase-1-build/)开始，该阶段提供了部署区域的完整操作指南，包括所有 Terraform 文件、CI 工作流，以及所需的变量和密钥。

@@ -1,43 +1,42 @@
 ---
 title: เฟส 1 — สร้าง
 description: >-
-  Deploy the F5 Distributed Cloud DNS zone with Terraform — the plan files,
-  required variables and secrets, Azure remote state, and the GitHub Actions
-  workflow.
+  ปรับใช้ F5 Distributed Cloud DNS zone ด้วย Terraform — ไฟล์ plan, ตัวแปรและ
+  secrets ที่จำเป็น, Azure remote state, และ GitHub Actions workflow
 sidebar:
   order: 2
   label: เฟส 1 — สร้าง
 i18n:
-  sourceHash: 1b2a3a4d703d
+  sourceHash: 30941b08b7f9
   translator: machine
 ---
 
 import { Steps, Aside, Tabs, TabItem } from "@astrojs/starlight/components";
 
-เฟส 1 ทำการ deploy **DNS zone หลักที่มีสิทธิ์** บน F5 Distributed Cloud ด้วย Terraform โดยมี
-remote state สำรองไว้ใน Azure Blob Storage หน้านี้แสดงทุกไฟล์ในแผน อธิบายตัวแปรและข้อมูลลับที่จำเป็น
-และครอบคลุมทั้งการรันในเครื่องและ pipeline ของ GitHub Actions
+เฟส 1 ปรับใช้ **primary DNS zone** แบบ authoritative บน F5 Distributed Cloud ด้วย Terraform โดยมี
+remote state สำรองอยู่ใน Azure Blob Storage หน้านี้แสดงทุกไฟล์ใน plan อธิบายตัวแปรและ secrets ที่จำเป็น
+และครอบคลุมทั้งการรันแบบ local และ GitHub Actions pipeline
 
-## สิ่งที่คุณ deploy
+## สิ่งที่คุณปรับใช้
 
-- `xcsh_dns_zone` สำหรับโดเมนที่ได้รับมอบหมาย ใน namespace `system` พร้อมกลุ่ม `demo-records`
+- `xcsh_dns_zone` สำหรับโดเมนที่มอบหมายให้คุณ ใน namespace `system` พร้อมกลุ่ม `demo-records`
   ของ A records (`www`, `app`, `api`)
-- Terraform state ที่เก็บไว้ใน Azure Blob Storage container เพื่อให้ state เดียวกันถูกแชร์ระหว่าง
-  เครื่องของคุณและ CI
+- Terraform state ที่จัดเก็บใน Azure Blob Storage container เพื่อให้ state เดียวกันถูกใช้ร่วมกัน
+  ระหว่างเครื่องของคุณและ CI
 
 <Aside type="note">
-DNS objects ต้องสร้างใน namespace `system` — F5 XC API จะปฏิเสธ namespace อื่น
+ออบเจกต์ DNS ต้องสร้างใน namespace `system` — F5 XC API จะปฏิเสธ namespace อื่น
 ชื่อ zone ต้องเป็นโดเมนที่บัญชีของคุณเป็นเจ้าของ และ TTL ของ record ต้องมีอย่างน้อย 60 วินาที
 </Aside>
 
-## แผน
+## Plan
 
-แผนอยู่ภายใต้ `terraform/`: root module บางๆ ที่เชื่อม input เข้ากับ module `dns-zone`
+Plan อยู่ภายใต้ `terraform/`: root module บาง ๆ ที่เชื่อมต่อ input เข้ากับ module `dns-zone`
 
 ### versions.tf
 
-กำหนด Terraform และ provider ข้อจำกัด provider คือ `>= 3.61.15` — release แรกของ registry
-ที่มาพร้อม DNS resources
+กำหนดเวอร์ชัน Terraform และ provider การจำกัด provider คือ `>= 3.61.15` — release แรกใน registry
+ที่มี DNS resources
 
 ```hcl
 terraform {
@@ -46,10 +45,10 @@ terraform {
   required_providers {
     xcsh = {
       source = "f5-sales-demo/xcsh"
-      # First registry release that ships the DNS resources (xcsh_dns_zone,
-      # dns_lb_*, geo_location_set). Earlier releases lack them. Locally the
-      # provider is consumed via dev_overrides, which ignores this constraint.
-      version = ">= 3.61.15"
+      # >= 3.61.16: the namespace attribute for system-only DNS resources defaults
+      # to "system" (spec-driven), so it can be omitted. Locally the provider is
+      # consumed via dev_overrides, which ignores this constraint.
+      version = ">= 3.61.16"
     }
   }
 }
@@ -57,7 +56,7 @@ terraform {
 
 ### providers.tf
 
-provider ไม่รับ argument ในโค้ด — มันตรวจสอบสิทธิ์จาก environment ดังนั้นจึงไม่มีข้อมูลลับถูก commit
+Provider ไม่รับอาร์กิวเมนต์ในโค้ด — มันยืนยันตัวตนจาก environment ดังนั้นจึงไม่มี secrets ถูก commit
 
 ```hcl
 # The xcsh provider authenticates from the environment — no secrets in code.
@@ -73,8 +72,8 @@ provider "xcsh" {}
 
 ### backend.tf
 
-backend `azurerm` แบบ **บางส่วน**: ไม่มีค่าเฉพาะสภาพแวดล้อมถูก hardcode ไว้ พิกัดต่างๆ
-จะถูกส่งมาตอน `init` (จากไฟล์ในเครื่อง หรือจาก GitHub Actions variables ใน CI)
+Backend `azurerm` แบบ **partial**: ไม่มีค่าเฉพาะ environment ถูก hardcode ไว้ ค่าพิกัดจะถูกส่งมา
+ในช่วง `init` (จากไฟล์ local หรือจาก GitHub Actions variables ใน CI)
 
 ```hcl
 terraform {
@@ -95,21 +94,11 @@ terraform {
 
 ### variables.tf
 
-`namespace` ถูกตรวจสอบให้เป็น `system`; `domain` จำเป็นต้องระบุ (ส่งมาตอน runtime ไม่ hardcode);
-`a_records` map ชื่อ record แต่ละรายการไปยัง IPv4 addresses
+`domain` เป็น required (ส่งมาในช่วง runtime ไม่ถูก hardcode); `a_records` แมปชื่อ record แต่ละรายการ
+ไปยัง IPv4 addresses ไม่มีตัวแปร `namespace` — provider กำหนด DNS objects ไว้ใน namespace `system`
+จาก constraint ของ API spec ดังนั้นจึงไม่ถูกกำหนดค่าที่นี่
 
 ```hcl
-variable "namespace" {
-  description = "F5 XC namespace for DNS objects. DNS objects MUST live in 'system'."
-  type        = string
-  default     = "system"
-
-  validation {
-    condition     = var.namespace == "system"
-    error_message = "F5 XC DNS objects must be created in the 'system' namespace."
-  }
-}
-
 variable "domain" {
   description = "DNS zone FQDN (required; supplied via TF_VAR_domain / a GitHub variable / tfvars)."
   type        = string
@@ -137,32 +126,30 @@ variable "a_records" {
 
 <Aside type="tip">
 A records ค่าเริ่มต้นใช้ที่อยู่เอกสาร RFC 5737 (`203.0.113.0/24`) ซึ่งไม่สามารถ route ได้
-แทนที่ด้วย target จริงสำหรับการสาธิตจริง
+แทนที่ด้วย targets จริงสำหรับการสาธิตแบบ live
 </Aside>
 
-### main.tf และ module dns-zone
+### main.tf และ dns-zone module
 
-root module เชื่อม input เข้ากับ `./modules/dns-zone`:
+Root module เชื่อมต่อ input เข้ากับ `./modules/dns-zone`:
 
 ```hcl
 module "dns_zone" {
   source = "./modules/dns-zone"
 
   domain    = var.domain
-  namespace = var.namespace
   labels    = var.labels
   a_records = var.a_records
 }
 ```
 
-module สร้าง zone บล็อก `dynamic "rr_set"` เปลี่ยน map `a_records` ให้เป็น record set หนึ่งชุด
-ต่อรายการ:
+Module สร้าง zone (namespace ถูกละเว้น — provider กำหนดค่าเริ่มต้นเป็น `system`) บล็อก
+`dynamic "rr_set"` แปลง map `a_records` เป็น record set หนึ่งรายการต่อรายการ:
 
 ```hcl
 resource "xcsh_dns_zone" "this" {
-  name      = var.domain
-  namespace = var.namespace
-  labels    = var.labels
+  name   = var.domain
+  labels = var.labels
 
   primary {
     default_soa_parameters {}
@@ -187,19 +174,19 @@ resource "xcsh_dns_zone" "this" {
 }
 ```
 
-root `outputs.tf` ส่งออกชื่อ zone และ F5 XC identifier จาก module อีกครั้ง
+Root `outputs.tf` ส่งออกชื่อ zone และ F5 XC identifier จาก module อีกครั้ง
 
-## ตัวแปรและข้อมูลลับที่จำเป็น
+## ตัวแปรและ secrets ที่จำเป็น
 
-ไม่มีอะไรที่เฉพาะสภาพแวดล้อมถูกฝังไว้ในไฟล์ `.tf` ทุกอย่างถูกส่งมาตอน runtime — จาก
-GitHub Actions **variables** และ **secrets** ใน CI หรือจากไฟล์ในเครื่องและ environment variables
+ไม่มีอะไรเฉพาะ environment ถูกฝังไว้ในไฟล์ `.tf` ทุกอย่างถูกส่งมาในช่วง runtime — จาก GitHub Actions
+**variables** และ **secrets** ใน CI หรือจากไฟล์ local และ environment variables
 
-| ค่า | วัตถุประสงค์ | แหล่งที่มาใน CI | แหล่งที่มาในเครื่อง |
+| ค่า | วัตถุประสงค์ | แหล่งที่มาใน CI | แหล่งที่มาใน Local |
 | --- | --- | --- | --- |
-| `resource_group_name`, `storage_account_name`, `container_name`, `key` | พิกัด azurerm backend | Repository **variables** `TFSTATE_RESOURCE_GROUP`, `TFSTATE_STORAGE_ACCOUNT`, `TFSTATE_CONTAINER`, `TFSTATE_KEY` (ส่งผ่าน `-backend-config`) | `backend.hcl` (คัดลอก `backend.hcl.example`; gitignored) |
-| `domain`, `namespace` | Terraform inputs | Repository **variables** `DNS_DOMAIN`, `DNS_NAMESPACE` (เป็น `TF_VAR_domain` / `TF_VAR_namespace`) | `terraform.tfvars` (คัดลอกจาก example) หรือ `TF_VAR_*` |
-| `ARM_ACCESS_KEY` | การตรวจสอบสิทธิ์ azurerm backend (storage account key) | Repository **secret** | `export ARM_ACCESS_KEY=...` |
-| `XCSH_API_URL`, `XCSH_API_TOKEN` | การตรวจสอบสิทธิ์ xcsh provider | Repository **secrets** | `export XCSH_API_URL=... XCSH_API_TOKEN=...` |
+| `resource_group_name`, `storage_account_name`, `container_name`, `key` | พิกัด azurerm backend | Repository **variables** `TFSTATE_RESOURCE_GROUP`, `TFSTATE_STORAGE_ACCOUNT`, `TFSTATE_CONTAINER`, `TFSTATE_KEY` (ส่งผ่าน `-backend-config`) | `backend.hcl` (copy `backend.hcl.example`; gitignored) |
+| `domain` | Terraform input | Repository **variable** `DNS_DOMAIN` (เป็น `TF_VAR_domain`) | `terraform.tfvars` (copy ตัวอย่าง) หรือ `TF_VAR_domain` |
+| `ARM_ACCESS_KEY` | azurerm backend auth (storage account key) | Repository **secret** | `export ARM_ACCESS_KEY=...` |
+| `XCSH_API_URL`, `XCSH_API_TOKEN` | xcsh provider auth | Repository **secrets** | `export XCSH_API_URL=... XCSH_API_TOKEN=...` |
 
 ไฟล์ตัวอย่างสองไฟล์ที่มาพร้อมกับ repo:
 
@@ -217,8 +204,7 @@ key                  = "dns.tfstate"
 <TabItem label="terraform.tfvars.example">
 
 ```hcl
-namespace = "system"
-domain    = "f5-sales-demo.com"
+domain = "f5-sales-demo.com"
 
 labels = {
   managed_by = "terraform"
@@ -236,16 +222,16 @@ a_records = {
 </Tabs>
 
 <Aside type="caution">
-การตรวจสอบสิทธิ์ backend ใช้ storage account access key (`ARM_ACCESS_KEY`) แทนที่จะเป็น keyless OIDC / Azure
-AD การเข้าถึง data-plane แบบ keyless ต้องการ role *Storage Blob Data Contributor* ซึ่ง
-subscription ที่มีแค่ Contributor ไม่สามารถกำหนดได้ access key อยู่เฉพาะใน environment หรือ GitHub secret เท่านั้น
-— ไม่เคยถูก commit
+Backend auth ใช้ storage account access key (`ARM_ACCESS_KEY`) แทนที่จะเป็น keyless OIDC / Azure AD
+การเข้าถึง data-plane แบบ keyless ต้องการ role *Storage Blob Data Contributor* ซึ่ง subscription
+แบบ Contributor-only ไม่สามารถกำหนดได้ access key อยู่เฉพาะใน environment หรือ GitHub secret เท่านั้น
+— มันไม่ถูก commit ไว้
 </Aside>
 
 ## Bootstrap Azure state backend
 
-storage backend ไม่สามารถเก็บ bootstrap ของตัวเองได้ ดังนั้นสร้างมันครั้งเดียวนอกระบบด้วย
-Azure CLI session ที่ตรวจสอบสิทธิ์แล้ว repo มาพร้อม `scripts/bootstrap-azure-state.sh`:
+Backend storage ไม่สามารถจัดเก็บ bootstrap ของตัวเองได้ ดังนั้นให้สร้างครั้งเดียว นอกกระบวนการปกติ
+ด้วย Azure CLI session ที่ยืนยันตัวตนแล้ว repo มีสคริปต์ `scripts/bootstrap-azure-state.sh`:
 
 ```sh
 az group create --name f5-sales-demo-tfstate --location eastus2 \
@@ -270,7 +256,7 @@ az storage container create --name tfstate \
   --account-name f5salesdemotfstate --auth-mode key --account-key "$KEY"
 ```
 
-จากนั้น export key สำหรับการรันในเครื่อง และตั้งค่ามัน (พร้อม credentials ของ provider) เป็น GitHub secrets:
+จากนั้น export key สำหรับการรัน local และตั้งค่า (พร้อม provider credentials) เป็น GitHub secrets:
 
 ```sh
 export ARM_ACCESS_KEY="$KEY"
@@ -279,11 +265,11 @@ gh secret set XCSH_API_URL   -R f5-sales-demo/dns
 gh secret set XCSH_API_TOKEN -R f5-sales-demo/dns
 ```
 
-## Deploy ในเครื่อง
+## ปรับใช้แบบ local
 
 <Steps>
 
-1. **กำหนดค่า inputs** คัดลอกไฟล์ตัวอย่างและกรอกค่าของคุณ:
+1. **กำหนดค่า inputs.** Copy ตัวอย่างและกรอกค่าของคุณ:
 
    ```sh
    cp terraform/backend.hcl.example terraform/backend.hcl
@@ -305,7 +291,7 @@ gh secret set XCSH_API_TOKEN -R f5-sales-demo/dns
    terraform init -backend-config=backend.hcl
    ```
 
-4. **ตรวจสอบการจัดรูปแบบและ validate:**
+4. **ตรวจสอบ formatting และ validate:**
 
    ```sh
    terraform fmt -check -recursive
@@ -321,15 +307,15 @@ gh secret set XCSH_API_TOKEN -R f5-sales-demo/dns
 
 </Steps>
 
-การ apply ที่สำเร็จจะสร้าง zone และเขียน state ไปยัง Azure container ดำเนินการต่อไปยัง
-[เฟส 2 — ตรวจสอบ](/dns/demo/phase-2-validate/) เพื่อยืนยันว่า resolve ได้
+การ apply ที่สำเร็จจะสร้าง zone และเขียน state ไปยัง Azure container ต่อไปที่
+[เฟส 2 — ตรวจสอบ](/dns/demo/phase-2-validate/) เพื่อยืนยันว่ามันแก้ไข DNS ได้
 
-## การรวมระบบอย่างต่อเนื่อง
+## Continuous integration
 
-workflow `.github/workflows/terraform.yml` รัน **plan** ทุก pull request และรัน **apply**
+Workflow `.github/workflows/terraform.yml` รัน **plan** ในทุก pull request และ **apply**
 เมื่อ merge ไปยัง `main` มันอ่านพิกัด backend และ inputs จาก repository variables และ
-credentials จาก secrets โดยส่งแต่ละอย่างเฉพาะเข้า step ที่ต้องการ และจัดลำดับการรันด้วย
-concurrency group เพื่อไม่ให้ apply สอง instance แข่งกันบน state blob ที่แชร์กัน
+credentials จาก secrets โดย inject แต่ละรายการเฉพาะในขั้นตอนที่ต้องการ และกำหนดลำดับการรัน
+บน concurrency group เพื่อไม่ให้ apply สองรายการแข่งกันบน state blob ที่ใช้ร่วมกัน
 
 ```yaml
 name: Terraform
@@ -393,7 +379,6 @@ jobs:
           XCSH_API_URL: ${{ secrets.XCSH_API_URL }}
           XCSH_API_TOKEN: ${{ secrets.XCSH_API_TOKEN }}
           TF_VAR_domain: ${{ vars.DNS_DOMAIN }}
-          TF_VAR_namespace: ${{ vars.DNS_NAMESPACE }}
         run: terraform plan -input=false -no-color
 
       - name: Apply
@@ -403,9 +388,8 @@ jobs:
           XCSH_API_URL: ${{ secrets.XCSH_API_URL }}
           XCSH_API_TOKEN: ${{ secrets.XCSH_API_TOKEN }}
           TF_VAR_domain: ${{ vars.DNS_DOMAIN }}
-          TF_VAR_namespace: ${{ vars.DNS_NAMESPACE }}
         run: terraform apply -input=false -auto-approve -no-color
 ```
 
-actions ถูกกำหนดค่าด้วย commit SHAs (พร้อม comment ระบุเวอร์ชัน) และ secrets ถูก scope ไว้เฉพาะ
-step `init`, `plan`, และ `apply` แทนที่จะเป็นทั้ง job
+actions ถูก pin ไว้ที่ commit SHAs (พร้อม version comments) และ secrets ถูก scope ไว้ที่ขั้นตอน
+`init`, `plan`, และ `apply` แทนที่จะเป็นทั้ง job

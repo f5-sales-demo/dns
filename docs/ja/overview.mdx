@@ -1,37 +1,37 @@
 ---
 title: 概要
 description: >-
-  F5 Distributed Cloud DNS ユースケースの構成 — 委任された DNS ゾーンを管理する xcsh-provider
-  Terraform プランで、状態は Azure Blob Storage に保存され、GitHub Actions CI を使用します。
+  F5 Distributed Cloud DNS ユースケースの構築方法 — 委任された DNS ゾーンを管理する xcsh-provider
+  Terraform プランで、Azure Blob Storage にステートを保存し、GitHub Actions CI を使用します。
 sidebar:
   order: 1
   label: 概要
 i18n:
-  sourceHash: 353ce3cf521f
+  sourceHash: a9809c0f7860
   translator: machine
 ---
 
 import { Aside } from "@astrojs/starlight/components";
 
-このユースケースは、Terraform を使用して **F5 Distributed Cloud 上の権威 DNS** を管理します。小規模で再利用可能なプランは、委任されたドメインのプライマリ DNS ゾーンとそのレコードを作成し、状態を **Azure Blob Storage** に保存し、**GitHub Actions** を通じてプルリクエスト時のプラン実行とマージ時のアプライを行います。
+このユースケースは、Terraform を使用して **F5 Distributed Cloud 上の権威 DNS** を管理します。小規模で再利用可能なプランが、委任されたドメインのプライマリ DNS ゾーンとそのレコードを作成し、**Azure Blob Storage** にステートを保存し、**GitHub Actions** を通じてプルリクエスト時のプラン実行とマージ時の適用を行います。
 
 ## 管理対象
 
-- `xcsh_dns_zone` — F5 XC `system` 名前空間内の権威**プライマリ**ゾーン（A レコード付き）。ゾーン名は委任されたドメイン（変数）であるため、対象の変更は設定変更であり、コード変更ではありません。
-- Azure 上のリモート Terraform 状態。これにより、オペレーターのマシンと CI 間での実行共有が可能になります。
+- `xcsh_dns_zone` — F5 XC の `system` ネームスペースにある権威**プライマリ**ゾーン（A レコード付き）。ゾーン名は委任されたドメイン（変数）であるため、対象の変更はコード変更ではなく設定変更で行えます。
+- Azure 上のリモート Terraform ステート。これにより、オペレーターのマシンと CI 間でのステート共有が可能になります。
 
 ## アーキテクチャ
 
 | レイヤー | 選択 | 理由 |
 | --- | --- | --- |
 | プロバイダー | `f5-sales-demo/xcsh`（Terraform レジストリ） | F5 XC OpenAPI から生成され、`xcsh_dns_zone` および DNS ロードバランサーリソースを管理します。API トークン（`Authorization: APIToken <token>`）で認証します。 |
-| 状態バックエンド | `azurerm`（Azure Blob Storage）、アクセスキー認証 | 耐久性のある共有状態。サブスクリプションが Contributor のみを付与しており、キーなし（OIDC / Azure AD）認証に必要な *Storage Blob Data Contributor* ロールを割り当てられないため、アクセスキー認証を使用しています。 |
-| 自動化 | GitHub Actions | すべてのプルリクエストでプランを実行し、`main` へのマージ時にアプライを実行します。バックエンドの設定と入力はリポジトリの**変数**から取得し、認証情報は**シークレット**から取得します。 |
+| ステートバックエンド | `azurerm`（Azure Blob Storage）、アクセスキー認証 | 永続的で共有可能なステート。アクセスキー認証を使用しているのは、サブスクリプションが Contributor 権限のみを付与しており、キーレス（OIDC / Azure AD）認証に必要な *Storage Blob Data Contributor* ロールを割り当てられないためです。 |
+| 自動化 | GitHub Actions | すべてのプルリクエスト時にプランを実行し、`main` へのマージ時に適用します。バックエンドの座標と入力はリポジトリの**変数**から取得し、認証情報は**シークレット**から取得します。 |
 
 <Aside type="note">
-すべての F5 XC DNS オブジェクトは `system` 名前空間に配置する必要があります — API は他の名前空間を拒否します。プランでは変数バリデーションルールによってこれを強制しています。
+すべての F5 XC DNS オブジェクトは `system` ネームスペースに存在する必要があります — API は他のネームスペースを拒否します。このプランはネームスペースを入力として公開していません。プロバイダーが API 仕様のネームスペース制約に従って `system` に固定するため、完全に省略されています。
 </Aside>
 
-## 始め方
+## はじめに
 
-[デモ](/dns/demo/)セクションでは、ライフサイクル全体をエンドツーエンドで説明しています：Terraform でゾーンを**構築**し、解決されることを**検証**し、DNS ロードバランサーで**フェイルオーバー**を行い、**ティアダウン**します。まず [フェーズ 1 — 構築](/dns/demo/phase-1-build/) から始めてください。これには、ゾーンのデプロイに関する完全なハウツーガイドが含まれており、すべての Terraform ファイル、CI ワークフロー、および必要な変数とシークレットが記載されています。
+[デモ](/dns/demo/)セクションでは、ライフサイクル全体をエンドツーエンドで説明します：Terraform を使用してゾーンを**構築**し、名前解決を**検証**し、DNS ロードバランサーで**フェイルオーバー**を行い、**ティアダウン**します。ゾーンのデプロイに関するすべての Terraform ファイル、CI ワークフロー、必要な変数とシークレットを含む完全なハウツーガイドである [フェーズ 1 — 構築](/dns/demo/phase-1-build/) から始めてください。

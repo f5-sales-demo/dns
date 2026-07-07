@@ -40,10 +40,10 @@ terraform {
   required_providers {
     xcsh = {
       source = "f5-sales-demo/xcsh"
-      # First registry release that ships the DNS resources (xcsh_dns_zone,
-      # dns_lb_*, geo_location_set). Earlier releases lack them. Locally the
-      # provider is consumed via dev_overrides, which ignores this constraint.
-      version = ">= 3.61.15"
+      # >= 3.61.16: the namespace attribute for system-only DNS resources defaults
+      # to "system" (spec-driven), so it can be omitted. Locally the provider is
+      # consumed via dev_overrides, which ignores this constraint.
+      version = ">= 3.61.16"
     }
   }
 }
@@ -90,21 +90,11 @@ terraform {
 
 ### variables.tf
 
-`namespace` is validated to `system`; `domain` is required (supplied at runtime, never hardcoded);
-`a_records` maps each record name to its IPv4 addresses.
+`domain` is required (supplied at runtime, never hardcoded); `a_records` maps each record name to its
+IPv4 addresses. There is no `namespace` variable — the provider fixes DNS objects to the `system`
+namespace from the API spec's constraint, so it is never configured here.
 
 ```hcl
-variable "namespace" {
-  description = "F5 XC namespace for DNS objects. DNS objects MUST live in 'system'."
-  type        = string
-  default     = "system"
-
-  validation {
-    condition     = var.namespace == "system"
-    error_message = "F5 XC DNS objects must be created in the 'system' namespace."
-  }
-}
-
 variable "domain" {
   description = "DNS zone FQDN (required; supplied via TF_VAR_domain / a GitHub variable / tfvars)."
   type        = string
@@ -144,20 +134,18 @@ module "dns_zone" {
   source = "./modules/dns-zone"
 
   domain    = var.domain
-  namespace = var.namespace
   labels    = var.labels
   a_records = var.a_records
 }
 ```
 
-The module creates the zone. A `dynamic "rr_set"` block turns the `a_records` map into one record set
-per entry:
+The module creates the zone (namespace is omitted — the provider defaults it to `system`). A
+`dynamic "rr_set"` block turns the `a_records` map into one record set per entry:
 
 ```hcl
 resource "xcsh_dns_zone" "this" {
-  name      = var.domain
-  namespace = var.namespace
-  labels    = var.labels
+  name   = var.domain
+  labels = var.labels
 
   primary {
     default_soa_parameters {}
@@ -192,7 +180,7 @@ GitHub Actions **variables** and **secrets** in CI, or from local files and envi
 | Value | Purpose | CI source | Local source |
 | --- | --- | --- | --- |
 | `resource_group_name`, `storage_account_name`, `container_name`, `key` | azurerm backend coordinates | Repository **variables** `TFSTATE_RESOURCE_GROUP`, `TFSTATE_STORAGE_ACCOUNT`, `TFSTATE_CONTAINER`, `TFSTATE_KEY` (passed via `-backend-config`) | `backend.hcl` (copy `backend.hcl.example`; gitignored) |
-| `domain`, `namespace` | Terraform inputs | Repository **variables** `DNS_DOMAIN`, `DNS_NAMESPACE` (as `TF_VAR_domain` / `TF_VAR_namespace`) | `terraform.tfvars` (copy the example) or `TF_VAR_*` |
+| `domain` | Terraform input | Repository **variable** `DNS_DOMAIN` (as `TF_VAR_domain`) | `terraform.tfvars` (copy the example) or `TF_VAR_domain` |
 | `ARM_ACCESS_KEY` | azurerm backend auth (storage account key) | Repository **secret** | `export ARM_ACCESS_KEY=...` |
 | `XCSH_API_URL`, `XCSH_API_TOKEN` | xcsh provider auth | Repository **secrets** | `export XCSH_API_URL=... XCSH_API_TOKEN=...` |
 
@@ -212,8 +200,7 @@ key                  = "dns.tfstate"
 <TabItem label="terraform.tfvars.example">
 
 ```hcl
-namespace = "system"
-domain    = "f5-sales-demo.com"
+domain = "f5-sales-demo.com"
 
 labels = {
   managed_by = "terraform"
@@ -388,7 +375,6 @@ jobs:
           XCSH_API_URL: ${{ secrets.XCSH_API_URL }}
           XCSH_API_TOKEN: ${{ secrets.XCSH_API_TOKEN }}
           TF_VAR_domain: ${{ vars.DNS_DOMAIN }}
-          TF_VAR_namespace: ${{ vars.DNS_NAMESPACE }}
         run: terraform plan -input=false -no-color
 
       - name: Apply
@@ -398,7 +384,6 @@ jobs:
           XCSH_API_URL: ${{ secrets.XCSH_API_URL }}
           XCSH_API_TOKEN: ${{ secrets.XCSH_API_TOKEN }}
           TF_VAR_domain: ${{ vars.DNS_DOMAIN }}
-          TF_VAR_namespace: ${{ vars.DNS_NAMESPACE }}
         run: terraform apply -input=false -auto-approve -no-color
 ```
 

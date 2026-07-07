@@ -1,40 +1,42 @@
 ---
 title: 개요
 description: >-
-  F5 Distributed Cloud DNS 사용 사례의 구성 방식 — 위임된 DNS 영역을 관리하는 xcsh-provider
-  Terraform 플랜으로, 상태는 Azure Blob Storage에 저장되며 GitHub Actions CI를 통해 실행됩니다.
+  F5 분산 클라우드 DNS 사용 사례가 구축되는 방식 — Azure Blob Storage에 상태를 저장하고 GitHub Actions
+  CI를 통해 위임된 DNS 존을 관리하는 xcsh-provider Terraform 플랜.
 sidebar:
   order: 1
   label: 개요
 i18n:
-  sourceHash: 353ce3cf521f
+  sourceHash: a9809c0f7860
   translator: machine
 ---
 
 import { Aside } from "@astrojs/starlight/components";
 
-이 사용 사례는 Terraform을 사용하여 **F5 Distributed Cloud의 권한 있는 DNS**를 관리합니다. 소규모의
-재사용 가능한 플랜이 위임된 도메인에 대한 기본 DNS 영역과 해당 레코드를 생성하고, 상태를
-**Azure Blob Storage**에 저장하며, **GitHub Actions**를 통해 풀 리퀘스트 시 플랜 실행 / 병합 시 적용을 수행합니다.
+이 사용 사례는 Terraform을 사용하여 **F5 분산 클라우드의 권한 있는 DNS**를 관리합니다. 소규모의
+재사용 가능한 플랜은 위임된 도메인에 대한 기본 DNS 존과 해당 레코드를 생성하고, 상태를
+**Azure Blob Storage**에 유지하며, **GitHub Actions**를 통해 풀 리퀘스트 시 plan / 머지 시 apply를 실행합니다.
 
 ## 관리 대상
 
-- `xcsh_dns_zone` — F5 XC `system` 네임스페이스의 권한 있는 **기본** 영역으로, A 레코드를 포함합니다. 영역 이름은 위임된 도메인(변수)이므로, 재타게팅은 코드 변경이 아닌 구성 변경으로 처리됩니다.
-- Azure의 원격 Terraform 상태로, 운영자의 로컬 머신과 CI 간에 실행을 공유할 수 있습니다.
+- `xcsh_dns_zone` — F5 XC `system` 네임스페이스의 권한 있는 **기본** 존으로, A 레코드를 포함합니다. 존 이름은 위임된 도메인(변수)이므로 대상 변경은 코드 변경이 아닌 구성 변경으로 처리됩니다.
+- Azure의 원격 Terraform 상태로, 운영자의 머신과 CI 간에 실행을 공유할 수 있습니다.
 
 ## 아키텍처
 
 | 레이어 | 선택 | 이유 |
 | --- | --- | --- |
-| 프로바이더 | `f5-sales-demo/xcsh` (Terraform 레지스트리) | F5 XC OpenAPI에서 생성되었으며, `xcsh_dns_zone` 및 DNS 로드 밸런서 리소스를 관리합니다. API 토큰(`Authorization: APIToken <token>`)으로 인증합니다. |
-| 상태 백엔드 | `azurerm` (Azure Blob Storage), 액세스 키 인증 | 내구성 있는 공유 상태. 구독이 Contributor 권한만 부여하므로 액세스 키 인증을 사용합니다. 키리스(OIDC / Azure AD) 인증에 필요한 *Storage Blob Data Contributor* 역할을 할당할 수 없기 때문입니다. |
-| 자동화 | GitHub Actions | 모든 풀 리퀘스트에서 플랜 실행, `main`으로 병합 시 적용. 백엔드 좌표와 입력값은 리포지토리 **변수**에서, 자격 증명은 **시크릿**에서 가져옵니다. |
+| 프로바이더 | `f5-sales-demo/xcsh` (Terraform 레지스트리) | F5 XC OpenAPI에서 생성되며, `xcsh_dns_zone` 및 DNS 로드 밸런서 리소스를 관리합니다. API 토큰(`Authorization: APIToken <token>`)으로 인증합니다. |
+| 상태 백엔드 | `azurerm` (Azure Blob Storage), 액세스 키 인증 | 내구성 있는 공유 상태. 구독이 Contributor 권한만 부여하며, 이는 키 없는(OIDC / Azure AD) 인증에 필요한 *Storage Blob Data Contributor* 역할을 할당할 수 없으므로 액세스 키 인증을 사용합니다. |
+| 자동화 | GitHub Actions | 모든 풀 리퀘스트에서 plan 실행, `main`으로 머지 시 apply 실행. 백엔드 조정 정보와 입력값은 리포지토리 **변수**에서, 자격 증명은 **시크릿**에서 가져옵니다. |
 
 <Aside type="note">
-모든 F5 XC DNS 객체는 `system` 네임스페이스에 위치해야 합니다 — API는 다른 네임스페이스를 거부합니다. 플랜은 변수 유효성 검사 규칙을 통해 이를 강제합니다.
+모든 F5 XC DNS 객체는 `system` 네임스페이스에 있어야 합니다 — API는 다른 네임스페이스를 거부합니다.
+플랜은 네임스페이스를 입력값으로 노출하지 않습니다. 프로바이더는 API 사양의 네임스페이스 제약에 따라
+이를 `system`으로 고정하므로 완전히 생략됩니다.
 </Aside>
 
-## 시작하는 곳
+## 시작 위치
 
-[데모](/dns/demo/) 섹션은 전체 수명 주기를 end-to-end로 안내합니다: Terraform으로 영역을 **빌드**하고, 해석이 되는지 **검증**하고, DNS 로드 밸런서로 **페일오버**하고, **해체**합니다.
-영역 배포에 대한 모든 Terraform 파일, CI 워크플로, 필수 변수 및 시크릿을 포함한 완전한 가이드인 [1단계 — 빌드](/dns/demo/phase-1-build/)부터 시작하세요.
+[데모](/dns/demo/) 아크는 전체 라이프사이클을 처음부터 끝까지 안내합니다: Terraform으로 존을 **빌드**하고, 레졸루션을 **검증**하고, DNS 로드 밸런서로 **페일오버**하고, **해체**합니다.
+모든 Terraform 파일, CI 워크플로우, 필요한 변수 및 시크릿을 포함한 존 배포에 대한 완전한 방법 안내인 [1단계 — 빌드](/dns/demo/phase-1-build/)부터 시작하십시오.

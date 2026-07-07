@@ -1,36 +1,36 @@
 ---
 title: 第一階段 — 建置
 description: >-
-  使用 Terraform 部署 F5 Distributed Cloud DNS 區域——包含計畫檔案、必要變數與機密、Azure 遠端狀態，以及
+  使用 Terraform 部署 F5 Distributed Cloud DNS 區域 — 計劃檔案、必要變數與密鑰、Azure 遠端狀態，以及
   GitHub Actions 工作流程。
 sidebar:
   order: 2
   label: 第一階段 — 建置
 i18n:
-  sourceHash: 1b2a3a4d703d
+  sourceHash: 30941b08b7f9
   translator: machine
 ---
 
 import { Steps, Aside, Tabs, TabItem } from "@astrojs/starlight/components";
 
-第一階段使用 Terraform 在 F5 Distributed Cloud 上部署一個具權威性的**主要 DNS 區域**，並以 Azure Blob Storage 作為遠端狀態的後端。本頁展示計畫中的每個檔案、說明所需的變數與機密，並涵蓋本機執行和 GitHub Actions 流水線兩種方式。
+第一階段使用 Terraform 在 F5 Distributed Cloud 上部署一個權威性的**主要 DNS 區域**，並以 Azure Blob Storage 中的遠端狀態作為後端。本頁展示計劃中的每個檔案、說明必要的變數與密鑰，並涵蓋本地執行與 GitHub Actions 流水線兩種方式。
 
 ## 部署內容
 
-- 一個 `xcsh_dns_zone`，用於您已委派的網域，位於 `system` 命名空間，包含一個 `demo-records` A 記錄群組（`www`、`app`、`api`）。
-- Terraform 狀態存放於 Azure Blob Storage 容器中，讓您的本機與 CI 共用相同的狀態。
+- 在 `system` 命名空間中為您的委派網域建立一個 `xcsh_dns_zone`，包含一個名為 `demo-records` 的 A 記錄群組（`www`、`app`、`api`）。
+- 將 Terraform 狀態儲存於 Azure Blob Storage 容器中，使您的本機與 CI 共享相同的狀態。
 
 <Aside type="note">
-DNS 物件必須在 `system` 命名空間中建立——F5 XC API 會拒絕其他命名空間。區域名稱必須是您的帳號所擁有的網域，且記錄 TTL 至少需為 60 秒。
+DNS 物件必須建立於 `system` 命名空間 — F5 XC API 會拒絕其他命名空間。區域名稱必須是您的帳號所擁有的網域，且記錄 TTL 至少須為 60 秒。
 </Aside>
 
-## 計畫內容
+## 計劃說明
 
-計畫存放於 `terraform/` 目錄下：一個精簡的根模組，將輸入值傳入 `dns-zone` 模組。
+計劃位於 `terraform/` 目錄下：一個精簡的根模組，將輸入連接至 `dns-zone` 模組。
 
 ### versions.tf
 
-固定 Terraform 和 Provider 的版本。Provider 約束為 `>= 3.61.15`——這是首個發布 DNS 資源的 Registry 版本。
+鎖定 Terraform 版本與提供者版本。提供者限制條件為 `>= 3.61.15` — 這是首個附帶 DNS 資源的 registry 版本。
 
 ```hcl
 terraform {
@@ -39,10 +39,10 @@ terraform {
   required_providers {
     xcsh = {
       source = "f5-sales-demo/xcsh"
-      # First registry release that ships the DNS resources (xcsh_dns_zone,
-      # dns_lb_*, geo_location_set). Earlier releases lack them. Locally the
-      # provider is consumed via dev_overrides, which ignores this constraint.
-      version = ">= 3.61.15"
+      # >= 3.61.16: the namespace attribute for system-only DNS resources defaults
+      # to "system" (spec-driven), so it can be omitted. Locally the provider is
+      # consumed via dev_overrides, which ignores this constraint.
+      version = ">= 3.61.16"
     }
   }
 }
@@ -50,7 +50,7 @@ terraform {
 
 ### providers.tf
 
-Provider 在程式碼中不需要任何引數——它從環境變數進行驗證，因此不會有機密被提交至版本控制。
+提供者在程式碼中不需要任何參數 — 它從環境變數進行驗證，因此不會將任何密鑰提交至版本控制。
 
 ```hcl
 # The xcsh provider authenticates from the environment — no secrets in code.
@@ -66,7 +66,7 @@ provider "xcsh" {}
 
 ### backend.tf
 
-一個**部分**的 `azurerm` 後端：不在此處硬編碼任何環境特定的值。相關參數在 `init` 時提供（來自本機檔案，或在 CI 中來自 GitHub Actions 變數）。
+一個**部分**的 `azurerm` 後端：不在此硬編碼任何特定環境的值。相關配置於 `init` 時提供（從本地檔案，或在 CI 中從 GitHub Actions 變數提供）。
 
 ```hcl
 terraform {
@@ -87,20 +87,9 @@ terraform {
 
 ### variables.tf
 
-`namespace` 被驗證為 `system`；`domain` 為必填（在執行期提供，不會被硬編碼）；`a_records` 將每個記錄名稱對應至其 IPv4 位址。
+`domain` 為必填項（在執行時提供，永不硬編碼）；`a_records` 將每個記錄名稱對應至其 IPv4 位址。此處沒有 `namespace` 變數 — 提供者依 API 規格的限制將 DNS 物件固定至 `system` 命名空間，因此永不在此配置。
 
 ```hcl
-variable "namespace" {
-  description = "F5 XC namespace for DNS objects. DNS objects MUST live in 'system'."
-  type        = string
-  default     = "system"
-
-  validation {
-    condition     = var.namespace == "system"
-    error_message = "F5 XC DNS objects must be created in the 'system' namespace."
-  }
-}
-
 variable "domain" {
   description = "DNS zone FQDN (required; supplied via TF_VAR_domain / a GitHub variable / tfvars)."
   type        = string
@@ -127,31 +116,29 @@ variable "a_records" {
 ```
 
 <Aside type="tip">
-預設的 A 記錄使用 RFC 5737 文件用位址（`203.0.113.0/24`），這些位址不可路由。若要進行真實的示範，請將其替換為實際目標位址。
+預設的 A 記錄使用 RFC 5737 文件位址（`203.0.113.0/24`），這些位址無法路由。請將其替換為真實目標以進行正式示範。
 </Aside>
 
 ### main.tf 與 dns-zone 模組
 
-根模組將輸入值傳入 `./modules/dns-zone`：
+根模組將輸入連接至 `./modules/dns-zone`：
 
 ```hcl
 module "dns_zone" {
   source = "./modules/dns-zone"
 
   domain    = var.domain
-  namespace = var.namespace
   labels    = var.labels
   a_records = var.a_records
 }
 ```
 
-該模組負責建立區域。`dynamic "rr_set"` 區塊將 `a_records` 映射轉換為每個項目對應一個記錄集：
+該模組建立區域（命名空間被省略 — 提供者預設為 `system`）。一個 `dynamic "rr_set"` 區塊將 `a_records` 映射轉換為每個項目一組記錄集：
 
 ```hcl
 resource "xcsh_dns_zone" "this" {
-  name      = var.domain
-  namespace = var.namespace
-  labels    = var.labels
+  name   = var.domain
+  labels = var.labels
 
   primary {
     default_soa_parameters {}
@@ -176,18 +163,18 @@ resource "xcsh_dns_zone" "this" {
 }
 ```
 
-根目錄的 `outputs.tf` 從模組重新匯出區域名稱和 F5 XC 識別碼。
+根目錄的 `outputs.tf` 從模組重新匯出區域名稱與 F5 XC 識別碼。
 
-## 必要的變數與機密
+## 必要變數與密鑰
 
-`.tf` 檔案中不內嵌任何環境特定的值。所有內容均在執行期提供——在 CI 中來自 GitHub Actions 的**變數**與**機密**，或在本機來自本機檔案和環境變數。
+`.tf` 檔案中不包含任何特定環境的值。所有配置均在執行時提供 — 在 CI 中來自 GitHub Actions **變數**與**密鑰**，或在本地來自檔案與環境變數。
 
-| 值 | 用途 | CI 來源 | 本機來源 |
+| 值 | 用途 | CI 來源 | 本地來源 |
 | --- | --- | --- | --- |
-| `resource_group_name`、`storage_account_name`、`container_name`、`key` | azurerm 後端參數 | 儲存庫**變數** `TFSTATE_RESOURCE_GROUP`、`TFSTATE_STORAGE_ACCOUNT`、`TFSTATE_CONTAINER`、`TFSTATE_KEY`（透過 `-backend-config` 傳入） | `backend.hcl`（複製 `backend.hcl.example`；已加入 gitignore） |
-| `domain`、`namespace` | Terraform 輸入值 | 儲存庫**變數** `DNS_DOMAIN`、`DNS_NAMESPACE`（以 `TF_VAR_domain` / `TF_VAR_namespace` 傳入） | `terraform.tfvars`（複製範例）或 `TF_VAR_*` |
-| `ARM_ACCESS_KEY` | azurerm 後端驗證（儲存體帳戶金鑰） | 儲存庫**機密** | `export ARM_ACCESS_KEY=...` |
-| `XCSH_API_URL`、`XCSH_API_TOKEN` | xcsh Provider 驗證 | 儲存庫**機密** | `export XCSH_API_URL=... XCSH_API_TOKEN=...` |
+| `resource_group_name`、`storage_account_name`、`container_name`、`key` | azurerm 後端座標 | 儲存庫**變數** `TFSTATE_RESOURCE_GROUP`、`TFSTATE_STORAGE_ACCOUNT`、`TFSTATE_CONTAINER`、`TFSTATE_KEY`（透過 `-backend-config` 傳入） | `backend.hcl`（複製 `backend.hcl.example`；已加入 gitignore） |
+| `domain` | Terraform 輸入 | 儲存庫**變數** `DNS_DOMAIN`（作為 `TF_VAR_domain`） | `terraform.tfvars`（複製範例）或 `TF_VAR_domain` |
+| `ARM_ACCESS_KEY` | azurerm 後端驗證（儲存帳戶金鑰） | 儲存庫**密鑰** | `export ARM_ACCESS_KEY=...` |
+| `XCSH_API_URL`、`XCSH_API_TOKEN` | xcsh 提供者驗證 | 儲存庫**密鑰** | `export XCSH_API_URL=... XCSH_API_TOKEN=...` |
 
 儲存庫中附帶的兩個範例檔案：
 
@@ -205,8 +192,7 @@ key                  = "dns.tfstate"
 <TabItem label="terraform.tfvars.example">
 
 ```hcl
-namespace = "system"
-domain    = "f5-sales-demo.com"
+domain = "f5-sales-demo.com"
 
 labels = {
   managed_by = "terraform"
@@ -224,12 +210,12 @@ a_records = {
 </Tabs>
 
 <Aside type="caution">
-後端驗證使用儲存體帳戶存取金鑰（`ARM_ACCESS_KEY`），而非無金鑰的 OIDC / Azure AD 方式。無金鑰的資料平面存取需要 *Storage Blob Data Contributor* 角色，而僅具備 Contributor 的訂閱無法指派該角色。存取金鑰僅存在於環境變數或 GitHub 機密中——絕不會被提交至版本控制。
+後端驗證使用儲存帳戶存取金鑰（`ARM_ACCESS_KEY`），而非無密鑰的 OIDC / Azure AD 方式。無密鑰的資料平面存取需要 *Storage Blob Data Contributor* 角色，而僅具備 Contributor 的訂閱無法指派該角色。存取金鑰僅存在於環境變數或 GitHub 密鑰中 — 永不提交至版本控制。
 </Aside>
 
-## 啟動 Azure 狀態後端
+## 初始化 Azure 狀態後端
 
-後端儲存體無法存放自身的啟動設定，因此需要使用已驗證的 Azure CLI 工作階段，在帶外環境中執行一次性建立。儲存庫附帶 `scripts/bootstrap-azure-state.sh`：
+後端儲存無法儲存其自身的初始化設定，因此需透過已驗證的 Azure CLI 工作階段執行一次，在帶外完成建立。儲存庫附帶 `scripts/bootstrap-azure-state.sh`：
 
 ```sh
 az group create --name f5-sales-demo-tfstate --location eastus2 \
@@ -254,7 +240,7 @@ az storage container create --name tfstate \
   --account-name f5salesdemotfstate --auth-mode key --account-key "$KEY"
 ```
 
-接著匯出金鑰供本機執行使用，並將其（連同 Provider 憑證）設為 GitHub 機密：
+接著匯出金鑰以供本地執行，並將其（連同提供者憑證）設定為 GitHub 密鑰：
 
 ```sh
 export ARM_ACCESS_KEY="$KEY"
@@ -263,11 +249,11 @@ gh secret set XCSH_API_URL   -R f5-sales-demo/dns
 gh secret set XCSH_API_TOKEN -R f5-sales-demo/dns
 ```
 
-## 本機部署
+## 本地部署
 
 <Steps>
 
-1. **設定輸入值。** 複製範例檔案並填入您的值：
+1. **配置輸入。** 複製範例檔案並填入您的值：
 
    ```sh
    cp terraform/backend.hcl.example terraform/backend.hcl
@@ -282,7 +268,7 @@ gh secret set XCSH_API_TOKEN -R f5-sales-demo/dns
    export ARM_ACCESS_KEY="<storage-account-key>"
    ```
 
-3. **初始化**後端（使用部分設定）：
+3. 使用部分配置**初始化**後端：
 
    ```sh
    cd terraform
@@ -305,11 +291,11 @@ gh secret set XCSH_API_TOKEN -R f5-sales-demo/dns
 
 </Steps>
 
-成功套用後，系統會建立區域並將狀態寫入 Azure 容器。請繼續前往[第二階段 — 驗證](/dns/demo/phase-2-validate/)以確認解析是否正常運作。
+成功套用後，將建立區域並將狀態寫入 Azure 容器。繼續前往[第二階段 — 驗證](/dns/demo/phase-2-validate/)以確認解析結果。
 
 ## 持續整合
 
-`.github/workflows/terraform.yml` 工作流程在每次 Pull Request 時執行**規劃**，並在合併至 `main` 時執行**套用**。它從儲存庫變數讀取後端參數和輸入值，從機密讀取憑證，並僅在需要的步驟中注入各項值，同時透過並行群組將執行序列化，避免兩個套用同時競爭共用的狀態 Blob。
+`.github/workflows/terraform.yml` 工作流程在每次 Pull Request 時執行**規劃**，並在合併至 `main` 時執行**套用**。它從儲存庫變數讀取後端座標與輸入，從密鑰讀取憑證，僅將每項值注入需要它的步驟，並透過並發群組序列化執行，確保兩個套用操作不會同時競爭共享的狀態 blob。
 
 ```yaml
 name: Terraform
@@ -373,7 +359,6 @@ jobs:
           XCSH_API_URL: ${{ secrets.XCSH_API_URL }}
           XCSH_API_TOKEN: ${{ secrets.XCSH_API_TOKEN }}
           TF_VAR_domain: ${{ vars.DNS_DOMAIN }}
-          TF_VAR_namespace: ${{ vars.DNS_NAMESPACE }}
         run: terraform plan -input=false -no-color
 
       - name: Apply
@@ -383,8 +368,7 @@ jobs:
           XCSH_API_URL: ${{ secrets.XCSH_API_URL }}
           XCSH_API_TOKEN: ${{ secrets.XCSH_API_TOKEN }}
           TF_VAR_domain: ${{ vars.DNS_DOMAIN }}
-          TF_VAR_namespace: ${{ vars.DNS_NAMESPACE }}
         run: terraform apply -input=false -auto-approve -no-color
 ```
 
-Actions 已固定至提交 SHA（並附有版本註解），且機密的作用範圍限定於 `init`、`plan` 和 `apply` 步驟，而非整個 Job。
+Actions 已鎖定至提交 SHA（附有版本註解），且密鑰的範圍限定於 `init`、`plan` 與 `apply` 步驟，而非整個工作。
