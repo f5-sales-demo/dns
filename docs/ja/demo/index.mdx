@@ -1,0 +1,41 @@
+---
+title: デモ
+description: F5 Distributed Cloud 上での Terraform 駆動の4フェーズ DNS 演習 — 構築、検証、フェイルオーバー、削除。
+sidebar:
+  order: 1
+  label: 概要
+i18n:
+  sourceHash: d6cd5c3d82ae
+  translator: machine
+---
+
+import { Aside } from "@astrojs/starlight/components";
+
+このガイドでは、Terraform を使用した F5 Distributed Cloud 上での**完全な DNS 演習**を順を追って説明します。
+人間のオペレーターまたは AI アシスタントがエンドツーエンドで実行できる4つのフェーズで構成されています。各
+フェーズはべき等です：再実行しても同じ状態に収束します。
+
+## 演習フェーズ
+
+| フェーズ | 目標 |
+| --- | --- |
+| [フェーズ 1 — 構築](/dns/demo/phase-1-build/) | Terraform を使用してプライマリ DNS ゾーンをデプロイし、リモート状態と CI を接続する |
+| [フェーズ 2 — 検証](/dns/demo/phase-2-validate/) | ゾーンがパブリックインターネット上で解決され、プランがべき等であることを確認する |
+| [フェーズ 3 — フェイルオーバー](/dns/demo/phase-3-failover/) | ヘルスチェック付きフェイルオーバーを備えた DNS ロードバランサーを追加する *（DNS-LB モジュール待ち）* |
+| [フェーズ 4 — 削除](/dns/demo/phase-4-teardown/) | 明示的な確認後に管理オブジェクトを削除する |
+
+## 前提条件
+
+- **Terraform** ≥ 1.5。
+- **`f5-sales-demo/xcsh`** プロバイダー ≥ 3.61.15（DNS リソースを搭載した最初のリリース）、
+  Terraform レジストリから解決するか、`dev_overrides` によるローカルビルドを使用。
+- `system` 名前空間へのアクセス権を持つ **F5 XC API トークン**。
+- **Azure CLI**（サブスクリプションの共同作成者としてサインイン済み）。ワンタイムの状態
+  バックエンドブートストラップに使用します。
+
+<Aside type="caution">
+ここで使用するドメインは F5 XC に委任されているため、作成したレコードはパブリックインターネット上で解決されます。
+自分が所有し、管理する意図のあるドメインを使用してください — プランが変数駆動になっているのは、まさに自分のドメインをターゲットにできるようにするためです。
+</Aside>
+
+[フェーズ 1 — 構築](/dns/demo/phase-1-build/) から始めてください。

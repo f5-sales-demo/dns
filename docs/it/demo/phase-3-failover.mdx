@@ -1,0 +1,51 @@
+---
+title: Fase 3 — Failover
+description: >-
+  Failover DNS con controllo dello stato su F5 Distributed Cloud con un
+  bilanciatore del carico DNS — il design pianificato, in attesa del modulo
+  Terraform dns-lb.
+sidebar:
+  order: 4
+  label: Fase 3 — Failover
+i18n:
+  sourceHash: fb9b9857341b
+  translator: machine
+---
+
+import { Aside } from "@astrojs/starlight/components";
+
+La Fase 3 aggiunge il **failover con controllo dello stato** sulla zona creata nella
+[Fase 1](/dns/demo/phase-1-build/): un **bilanciatore del carico DNS** F5 XC restituisce risposte diverse per un
+nome in base allo stato del pool, in modo che il traffico venga instradato automaticamente verso un pool sano.
+
+<Aside type="caution" title="In attesa del modulo dns-lb">
+Questa fase non è ancora eseguibile. Dipende da un modulo Terraform `dns-lb` che è un follow-up del
+piano attuale, bloccato sulla definizione del formato wire di `lb_record`. Questa pagina documenta il design
+previsto affinché l'arco sia completo; i passi eseguibili saranno disponibili con il modulo.
+</Aside>
+
+## Design pianificato
+
+Lo stack del bilanciatore del carico DNS è composto da tre risorse F5 XC e un record nella zona:
+
+| Risorsa | Ruolo |
+| --- | --- |
+| `xcsh_dns_lb_health_check` | Verifica ciascun membro (HTTP, HTTPS, TCP, ICMP o UDP) per determinare lo stato del pool |
+| `xcsh_dns_lb_pool` | Un insieme di membri con una modalità di bilanciamento del carico (`ROUND_ROBIN`, `PRIORITY`, …) e un riferimento al controllo dello stato |
+| `xcsh_dns_load_balancer` | Regole che selezionano un pool per richiesta, con un pool di fallback |
+| `lb_record` (in `xcsh_dns_zone`) | Associa un nome nella zona al bilanciatore del carico DNS |
+
+Il modulo `dns-lb` esprimerà queste risorse, e il modulo della zona includerà una voce `lb_record` che punta
+al bilanciatore del carico — in modo che un singolo `terraform apply` costruisca l'intero percorso di failover.
+
+## Dimostrazione pianificata
+
+Una volta rilasciato il modulo, la dimostrazione del failover:
+
+1. Distribuirà due pool (primario e secondario) dietro il bilanciatore del carico DNS, con un controllo dello stato.
+2. Risolverà il nome bilanciato e confermerà che restituisce la risposta del pool primario.
+3. Renderà il pool primario non sano e confermerà che la risoluzione passa al secondario — il gate di prontezza
+   interroga `dig` fino a quando la risposta non cambia.
+4. Ripristinerà il pool primario e confermerà il failback.
+
+Nel frattempo, proseguire con la [Fase 4 — Teardown](/dns/demo/phase-4-teardown/) per rimuovere la zona della Fase 1.

@@ -1,0 +1,43 @@
+---
+title: Demostración
+description: >-
+  Un ejercicio DNS en cuatro fases impulsado por Terraform en F5 Distributed
+  Cloud — Construir, Validar, Conmutación por error, Desmantelar.
+sidebar:
+  order: 1
+  label: Descripción general
+i18n:
+  sourceHash: d6cd5c3d82ae
+  translator: machine
+---
+
+import { Aside } from "@astrojs/starlight/components";
+
+Esta guía recorre un **ejercicio DNS completo** en F5 Distributed Cloud, impulsado por Terraform.
+Está estructurada en cuatro fases que un operador humano o un asistente de IA puede ejecutar de
+principio a fin. Cada fase es idempotente: volver a ejecutarla converge al mismo estado.
+
+## Fases del ejercicio
+
+| Fase | Objetivo |
+| --- | --- |
+| [Fase 1 — Construir](/dns/demo/phase-1-build/) | Desplegar la zona DNS primaria con Terraform; configurar el estado remoto y CI |
+| [Fase 2 — Validar](/dns/demo/phase-2-validate/) | Confirmar que la zona se resuelve en la internet pública y que el plan es idempotente |
+| [Fase 3 — Conmutación por error](/dns/demo/phase-3-failover/) | Agregar un balanceador de carga DNS con conmutación por error verificada por estado de salud *(pendiente del módulo DNS-LB)* |
+| [Fase 4 — Desmantelar](/dns/demo/phase-4-teardown/) | Destruir los objetos gestionados tras confirmación explícita |
+
+## Requisitos previos
+
+- **Terraform** ≥ 1.5.
+- El proveedor **`f5-sales-demo/xcsh`** ≥ 3.61.15 (la primera versión que incluye los recursos DNS),
+  resuelto desde el registro de Terraform — o una compilación local mediante `dev_overrides`.
+- Un **token de API de F5 XC** con acceso al namespace `system`.
+- La **CLI de Azure**, autenticada con permisos de Contributor en la suscripción, para el
+  arranque inicial del backend de estado.
+
+<Aside type="caution">
+El dominio utilizado aquí está delegado a F5 XC, por lo que los registros que cree se resuelven en la internet pública.
+Utilice un dominio de su propiedad que tenga intención de gestionar — el plan está parametrizado por variables precisamente para que pueda apuntar al suyo.
+</Aside>
+
+Comience con [Fase 1 — Construir](/dns/demo/phase-1-build/).

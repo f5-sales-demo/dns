@@ -1,0 +1,68 @@
+---
+title: "Phase 4 — Teardown"
+description: Remove the F5 Distributed Cloud DNS zone and its records with Terraform after explicit confirmation, leaving the Azure state backend intact.
+sidebar:
+  order: 5
+  label: "Phase 4 — Teardown"
+---
+
+import { Steps, Aside } from "@astrojs/starlight/components";
+
+Phase 4 removes everything the plan created. `terraform destroy` deletes the managed `xcsh_dns_zone`
+(and its records) through the F5 XC API and updates the remote state.
+
+<Aside type="caution">
+Destroy is irreversible and removes public DNS records for the domain. Confirm the target domain and
+tenant before proceeding — the credentials and inputs in your environment decide what gets deleted.
+</Aside>
+
+## Destroy
+
+<Steps>
+
+1. Confirm your environment targets the intended tenant and domain:
+
+   ```sh
+   echo "$XCSH_API_URL"
+   grep '^domain' terraform/terraform.tfvars
+   ```
+
+2. Review what will be destroyed:
+
+   ```sh
+   cd terraform
+   terraform plan -destroy
+   ```
+
+3. Destroy after reviewing the plan:
+
+   ```sh
+   terraform destroy
+   ```
+
+</Steps>
+
+## Verify removal
+
+Confirm the zone is gone from F5 XC (expect HTTP `404`):
+
+```bash
+curl -s -o /dev/null -w '%{http_code}\n' \
+  -H "Authorization: APIToken xF5XC_API_TOKENx" \
+  "xF5XC_API_URLx/api/config/dns/namespaces/system/dns_zones/xF5XC_DOMAINx"
+```
+
+Public resolution stops once the delegated nameservers drop the records.
+
+## What remains
+
+The Azure state backend (resource group, storage account, container) is **not** removed by
+`terraform destroy` — it holds the state and is reused across runs. The state file remains, now
+recording an empty configuration. Remove the backend only when you are retiring the environment
+entirely, with the Azure CLI:
+
+```sh
+az group delete --name f5-sales-demo-tfstate --yes
+```
+
+To rebuild, start again at [Phase 1 — Build](/dns/demo/phase-1-build/).

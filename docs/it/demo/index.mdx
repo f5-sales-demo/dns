@@ -1,0 +1,43 @@
+---
+title: Demo
+description: >-
+  Un esercizio DNS in quattro fasi, gestito da Terraform su F5 Distributed Cloud
+  — Costruzione, Validazione, Failover, Smantellamento.
+sidebar:
+  order: 1
+  label: Panoramica
+i18n:
+  sourceHash: d6cd5c3d82ae
+  translator: machine
+---
+
+import { Aside } from "@astrojs/starlight/components";
+
+Questa guida illustra un **esercizio DNS completo** su F5 Distributed Cloud, gestito da Terraform.
+È strutturata in quattro fasi che un operatore umano o un assistente IA può eseguire dall'inizio alla fine. Ogni
+fase è idempotente: rieseguirla converge allo stesso stato.
+
+## Fasi dell'esercizio
+
+| Fase | Obiettivo |
+| --- | --- |
+| [Fase 1 — Costruzione](/dns/demo/phase-1-build/) | Distribuire la zona DNS primaria con Terraform; configurare lo stato remoto e la CI |
+| [Fase 2 — Validazione](/dns/demo/phase-2-validate/) | Confermare che la zona si risolve su Internet pubblico e che il piano è idempotente |
+| [Fase 3 — Failover](/dns/demo/phase-3-failover/) | Aggiungere un bilanciatore del carico DNS con failover verificato tramite controlli di integrità *(in attesa del modulo DNS-LB)* |
+| [Fase 4 — Smantellamento](/dns/demo/phase-4-teardown/) | Eliminare gli oggetti gestiti dopo conferma esplicita |
+
+## Prerequisiti
+
+- **Terraform** ≥ 1.5.
+- Il provider **`f5-sales-demo/xcsh`** ≥ 3.61.15 (la prima versione che include le risorse DNS),
+  risolto dal registro Terraform — oppure una build locale tramite `dev_overrides`.
+- Un **token API F5 XC** con accesso al namespace `system`.
+- La **Azure CLI**, autenticata con il ruolo Contributor sulla sottoscrizione, per il bootstrap
+  del backend di stato eseguito una sola volta.
+
+<Aside type="caution">
+Il dominio utilizzato in questo contesto è delegato a F5 XC, quindi i record creati si risolvono su Internet pubblico.
+Utilizzare un dominio di propria titolarità che si intende gestire — il piano è basato su variabili proprio per consentire di puntare al proprio dominio.
+</Aside>
+
+Iniziare con la [Fase 1 — Costruzione](/dns/demo/phase-1-build/).

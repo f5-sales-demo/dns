@@ -1,0 +1,44 @@
+---
+title: Démo
+description: >-
+  Un exercice DNS en quatre phases, piloté par Terraform sur F5 Distributed
+  Cloud — Construction, Validation, Basculement, Démantèlement.
+sidebar:
+  order: 1
+  label: Vue d'ensemble
+i18n:
+  sourceHash: d6cd5c3d82ae
+  translator: machine
+---
+
+import { Aside } from "@astrojs/starlight/components";
+
+Ce guide présente un **exercice DNS complet** sur F5 Distributed Cloud, piloté par Terraform.
+Il est structuré en quatre phases qu'un opérateur humain ou un assistant IA peut exécuter de bout en bout. Chaque
+phase est idempotente : la réexécuter converge vers le même état.
+
+## Phases de l'exercice
+
+| Phase | Objectif |
+| --- | --- |
+| [Phase 1 — Construction](/dns/demo/phase-1-build/) | Déployer la zone DNS primaire avec Terraform ; configurer l'état distant et la CI |
+| [Phase 2 — Validation](/dns/demo/phase-2-validate/) | Confirmer que la zone se résout sur l'internet public et que le plan est idempotent |
+| [Phase 3 — Basculement](/dns/demo/phase-3-failover/) | Ajouter un équilibreur de charge DNS avec basculement contrôlé par bilan de santé *(en attente du module DNS-LB)* |
+| [Phase 4 — Démantèlement](/dns/demo/phase-4-teardown/) | Détruire les objets gérés après confirmation explicite |
+
+## Prérequis
+
+- **Terraform** ≥ 1.5.
+- Le fournisseur **`f5-sales-demo/xcsh`** ≥ 3.61.15 (la première version embarquant les ressources DNS),
+  résolu depuis le registre Terraform — ou une compilation locale via `dev_overrides`.
+- Un **jeton API F5 XC** avec accès au namespace `system`.
+- L'**interface CLI Azure**, connectée avec le rôle Contributeur sur l'abonnement, pour l'initialisation
+  unique du backend d'état.
+
+<Aside type="caution">
+Le domaine utilisé ici est délégué à F5 XC, de sorte que les enregistrements que vous créez se résolvent sur l'internet public.
+Utilisez un domaine que vous possédez et que vous avez l'intention de gérer — le plan est paramétré par variables précisément pour que vous puissiez cibler
+le vôtre.
+</Aside>
+
+Commencez par [Phase 1 — Construction](/dns/demo/phase-1-build/).

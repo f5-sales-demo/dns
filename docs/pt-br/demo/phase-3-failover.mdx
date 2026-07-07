@@ -1,0 +1,51 @@
+---
+title: Fase 3 — Failover
+description: >-
+  Failover de DNS com verificação de integridade no F5 Distributed Cloud com um
+  balanceador de carga DNS — o design planejado, pendente do módulo Terraform
+  dns-lb.
+sidebar:
+  order: 4
+  label: Fase 3 — Failover
+i18n:
+  sourceHash: fb9b9857341b
+  translator: machine
+---
+
+import { Aside } from "@astrojs/starlight/components";
+
+A Fase 3 adiciona **failover com verificação de integridade** sobre a zona da
+[Fase 1](/dns/demo/phase-1-build/): um **balanceador de carga DNS** do F5 XC retorna respostas diferentes para um
+nome com base na integridade do pool, de modo que o tráfego é direcionado automaticamente para um pool saudável.
+
+<Aside type="caution" title="Pendente do módulo dns-lb">
+Esta fase ainda não é executável. Ela depende de um módulo Terraform `dns-lb` que é um desdobramento do
+plano atual, bloqueado pela definição do formato de wire do `lb_record`. Esta página documenta o design
+pretendido para que o arco esteja completo; as etapas executáveis serão disponibilizadas junto com o módulo.
+</Aside>
+
+## Design planejado
+
+A pilha do balanceador de carga DNS é composta por três recursos do F5 XC mais um registro na zona:
+
+| Recurso | Função |
+| --- | --- |
+| `xcsh_dns_lb_health_check` | Verifica cada membro (HTTP, HTTPS, TCP, ICMP ou UDP) para determinar a integridade do pool |
+| `xcsh_dns_lb_pool` | Um conjunto de membros com um modo de balanceamento de carga (`ROUND_ROBIN`, `PRIORITY`, …) e uma referência à verificação de integridade |
+| `xcsh_dns_load_balancer` | Regras que selecionam um pool por requisição, com um pool de fallback |
+| `lb_record` (em `xcsh_dns_zone`) | Vincula um nome na zona ao balanceador de carga DNS |
+
+O módulo `dns-lb` irá expressar esses recursos, e o módulo de zona receberá uma entrada `lb_record` apontando
+para o balanceador de carga — assim, um único `terraform apply` constrói todo o caminho de failover.
+
+## Demonstração planejada
+
+Assim que o módulo for disponibilizado, a demonstração de failover irá:
+
+1. Implantar dois pools (primário e secundário) atrás do balanceador de carga DNS, com uma verificação de integridade.
+2. Resolver o nome com balanceamento de carga e confirmar que ele retorna a resposta do pool primário.
+3. Tornar o pool primário não saudável e confirmar que a resolução realiza failover para o secundário — a verificação de prontidão
+   consulta `dig` até que a resposta mude.
+4. Restaurar o pool primário e confirmar o failback.
+
+Até lá, continue para a [Fase 4 — Teardown](/dns/demo/phase-4-teardown/) para remover a zona da Fase 1.

@@ -1,0 +1,44 @@
+---
+title: Phase 3 — 페일오버
+description: >-
+  DNS 부하 분산기를 사용한 F5 Distributed Cloud의 상태 확인 DNS 페일오버 — 계획된 설계로, dns-lb
+  Terraform 모듈 완성 후 실행 가능합니다.
+sidebar:
+  order: 4
+  label: Phase 3 — 페일오버
+i18n:
+  sourceHash: fb9b9857341b
+  translator: machine
+---
+
+import { Aside } from "@astrojs/starlight/components";
+
+Phase 3은 [Phase 1](/dns/demo/phase-1-build/)의 존 위에 **상태 확인 페일오버**를 추가합니다: F5 XC **DNS 부하 분산기**는 풀 상태에 따라 이름에 대한 다른 응답을 반환하므로, 트래픽이 자동으로 정상 풀로 이동합니다.
+
+<Aside type="caution" title="dns-lb 모듈 대기 중">
+이 Phase는 아직 실행할 수 없습니다. 현재 계획의 후속 작업인 `dns-lb` Terraform 모듈에 의존하며, `lb_record` 와이어 형식 고정 작업이 완료되어야 합니다. 이 페이지는 전체 흐름이 완성될 수 있도록 의도된 설계를 문서화한 것이며, 실행 가능한 단계는 모듈과 함께 제공될 예정입니다.
+</Aside>
+
+## 계획된 설계
+
+DNS 부하 분산기 스택은 세 개의 F5 XC 리소스와 존 내의 레코드로 구성됩니다:
+
+| 리소스 | 역할 |
+| --- | --- |
+| `xcsh_dns_lb_health_check` | 풀 상태를 결정하기 위해 각 멤버를 검사합니다 (HTTP, HTTPS, TCP, ICMP 또는 UDP) |
+| `xcsh_dns_lb_pool` | 부하 분산 모드(`ROUND_ROBIN`, `PRIORITY`, …)와 상태 확인 참조가 포함된 멤버 집합 |
+| `xcsh_dns_load_balancer` | 요청별로 풀을 선택하는 규칙과 폴백 풀 |
+| `lb_record` (`xcsh_dns_zone` 내) | 존의 이름을 DNS 부하 분산기에 바인딩 |
+
+`dns-lb` 모듈이 이를 표현하고, 존 모듈에는 부하 분산기를 가리키는 `lb_record` 항목이 추가될 예정입니다 — 따라서 `terraform apply` 한 번으로 전체 페일오버 경로가 구성됩니다.
+
+## 계획된 데모
+
+모듈이 출시되면 페일오버 데모는 다음을 수행합니다:
+
+1. DNS 부하 분산기 뒤에 두 개의 풀(기본 및 보조)을 배포하고 상태 확인을 설정합니다.
+2. 부하 분산된 이름을 확인하고 기본 풀의 응답이 반환되는지 확인합니다.
+3. 기본 풀을 비정상 상태로 만들고 보조 풀로 확인이 페일오버되는지 확인합니다 — 준비 게이트가 응답이 변경될 때까지 `dig`를 폴링합니다.
+4. 기본 풀을 복구하고 페일백을 확인합니다.
+
+그 전까지는 [Phase 4 — 해체](/dns/demo/phase-4-teardown/)로 계속 진행하여 Phase 1 존을 제거하십시오.

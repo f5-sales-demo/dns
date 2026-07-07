@@ -1,0 +1,11 @@
+{
+  "customSets": [
+    {
+      "label": "Demo",
+      "description": "4-phase Terraform-driven DNS exercise — build, validate, failover, teardown",
+      "paths": ["demo/**"]
+    }
+  ],
+  "promote": ["index*", "overview*"],
+  "demote": ["references*", "faq*"]
+}
