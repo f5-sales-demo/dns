@@ -13,11 +13,9 @@ variable "labels" {
 }
 
 variable "a_records" {
-  description = "A records for the zone: record name (\"\" = apex) to list of IPv4 addresses. Mirrors manifests/f5-sales-demo-com.json (RFC 5737 documentation addresses)."
+  description = "Static A records for the zone: record name (\"\" = apex) to list of IPv4 addresses. NOTE: www and api are intentionally NOT managed here — they are owned by the webapp-api-protection HTTP load balancer via allow_http_lb_managed_records (F5 XC auto-manages those records to the LB VIP). Keep only records not fronted by an XC load balancer."
   type        = map(list(string))
   default = {
-    www = ["203.0.113.10"]
     app = ["203.0.113.20"]
-    api = ["203.0.113.30"]
   }
 }

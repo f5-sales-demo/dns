@@ -10,8 +10,8 @@ labels = {
 }
 
 # A records: record name ("" = apex) -> list of IPv4 addresses.
+# www and api are owned by the webapp-api-protection HTTP load balancer
+# (allow_http_lb_managed_records) — do NOT declare them here.
 a_records = {
-  www = ["203.0.113.10"]
   app = ["203.0.113.20"]
-  api = ["203.0.113.30"]
 }
