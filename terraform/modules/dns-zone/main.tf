@@ -8,6 +8,11 @@ resource "xcsh_dns_zone" "this" {
   labels = var.labels
 
   primary {
+    # Allow HTTP/TCP/CDN load balancers to auto-manage their resource records
+    # (e.g. www / api) in a protected RRset. Consumed by the webapp-api-protection
+    # load balancer, which owns www.f5-sales-demo.com and api.f5-sales-demo.com.
+    allow_http_lb_managed_records = true
+
     default_soa_parameters {}
 
     rr_set_group {
