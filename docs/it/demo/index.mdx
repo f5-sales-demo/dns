@@ -7,7 +7,7 @@ sidebar:
   order: 1
   label: Panoramica
 i18n:
-  sourceHash: 28584ff7eba9
+  sourceHash: b287052895a6
   translator: machine
 ---
 
@@ -21,10 +21,10 @@ fase è idempotente: rieseguirla converge allo stesso stato.
 
 | Fase | Obiettivo |
 | --- | --- |
-| [Fase 1 — Build](/dns/demo/phase-1-build/) | Distribuire la zona DNS primaria con Terraform; configurare lo stato remoto e la CI |
-| [Fase 2 — Validate](/dns/demo/phase-2-validate/) | Verificare che la zona si risolva sulla rete internet pubblica e che il piano sia idempotente |
-| [Fase 3 — Failover](/dns/demo/phase-3-failover/) | Aggiungere un bilanciatore del carico DNS con failover controllato dallo stato di salute *(in attesa del modulo DNS-LB)* |
-| [Fase 4 — Teardown](/dns/demo/phase-4-teardown/) | Eliminare gli oggetti gestiti dopo conferma esplicita |
+| [Fase 1 — Build](/dns/it/demo/phase-1-build/) | Distribuire la zona DNS primaria con Terraform; configurare lo stato remoto e la CI |
+| [Fase 2 — Validate](/dns/it/demo/phase-2-validate/) | Verificare che la zona si risolva sulla rete internet pubblica e che il piano sia idempotente |
+| [Fase 3 — Failover](/dns/it/demo/phase-3-failover/) | Aggiungere un bilanciatore del carico DNS con failover controllato dallo stato di salute *(in attesa del modulo DNS-LB)* |
+| [Fase 4 — Teardown](/dns/it/demo/phase-4-teardown/) | Eliminare gli oggetti gestiti dopo conferma esplicita |
 
 ## Prerequisiti
 
@@ -41,4 +41,4 @@ Utilizzare un dominio di propria titolarità che si intende gestire — il piano
 proprio dominio.
 </Aside>
 
-Iniziare con la [Fase 1 — Build](/dns/demo/phase-1-build/).
+Iniziare con la [Fase 1 — Build](/dns/it/demo/phase-1-build/).

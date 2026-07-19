@@ -9,7 +9,7 @@ sidebar:
 import { Aside } from "@astrojs/starlight/components";
 
 Phase 3 adds **health-checked failover** on top of the zone from
-[Phase 1](/dns/demo/phase-1-build/): an F5 XC **DNS load balancer** returns different answers for a
+[Phase 1](/dns/en/demo/phase-1-build/): an F5 XC **DNS load balancer** returns different answers for a
 name based on pool health, so traffic moves to a healthy pool automatically.
 
 <Aside type="caution" title="Pending the dns-lb module">
@@ -42,4 +42,4 @@ Once the module ships, the failover demo will:
    polls `dig` until the answer changes.
 4. Restore the primary and confirm failback.
 
-Until then, continue to [Phase 4 — Teardown](/dns/demo/phase-4-teardown/) to remove the Phase 1 zone.
+Until then, continue to [Phase 4 — Teardown](/dns/en/demo/phase-4-teardown/) to remove the Phase 1 zone.

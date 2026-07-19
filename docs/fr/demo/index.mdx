@@ -7,7 +7,7 @@ sidebar:
   order: 1
   label: Vue d'ensemble
 i18n:
-  sourceHash: 28584ff7eba9
+  sourceHash: b287052895a6
   translator: machine
 ---
 
@@ -21,10 +21,10 @@ phase est idempotente : la réexécuter converge vers le même état.
 
 | Phase | Objectif |
 | --- | --- |
-| [Phase 1 — Construction](/dns/demo/phase-1-build/) | Déployer la zone DNS primaire avec Terraform ; configurer l'état distant et l'intégration continue |
-| [Phase 2 — Validation](/dns/demo/phase-2-validate/) | Confirmer que la zone se résout sur l'internet public et que le plan est idempotent |
-| [Phase 3 — Basculement](/dns/demo/phase-3-failover/) | Ajouter un équilibreur de charge DNS avec basculement contrôlé par bilan de santé *(en attente du module DNS-LB)* |
-| [Phase 4 — Démantèlement](/dns/demo/phase-4-teardown/) | Détruire les objets gérés après confirmation explicite |
+| [Phase 1 — Construction](/dns/fr/demo/phase-1-build/) | Déployer la zone DNS primaire avec Terraform ; configurer l'état distant et l'intégration continue |
+| [Phase 2 — Validation](/dns/fr/demo/phase-2-validate/) | Confirmer que la zone se résout sur l'internet public et que le plan est idempotent |
+| [Phase 3 — Basculement](/dns/fr/demo/phase-3-failover/) | Ajouter un équilibreur de charge DNS avec basculement contrôlé par bilan de santé *(en attente du module DNS-LB)* |
+| [Phase 4 — Démantèlement](/dns/fr/demo/phase-4-teardown/) | Détruire les objets gérés après confirmation explicite |
 
 ## Prérequis
 
@@ -39,4 +39,4 @@ Le domaine utilisé ici est délégué à F5 XC, de sorte que les enregistrement
 Utilisez un domaine que vous possédez et que vous avez l'intention de gérer — le plan est piloté par des variables précisément pour vous permettre de cibler le vôtre.
 </Aside>
 
-Commencez par [Phase 1 — Construction](/dns/demo/phase-1-build/).
+Commencez par [Phase 1 — Construction](/dns/fr/demo/phase-1-build/).

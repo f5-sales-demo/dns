@@ -8,13 +8,13 @@ sidebar:
   order: 3
   label: Fase 2 — Validar
 i18n:
-  sourceHash: 57c1c28019b0
+  sourceHash: 412a08e16df9
   translator: machine
 ---
 
 import { Steps, Aside } from "@astrojs/starlight/components";
 
-La Fase 2 confirma que la zona creada en la [Fase 1](/dns/demo/phase-1-build/) está activa: los registros se resuelven públicamente,
+La Fase 2 confirma que la zona creada en la [Fase 1](/dns/es/demo/phase-1-build/) está activa: los registros se resuelven públicamente,
 la configuración de F5 XC coincide con lo que Terraform declaró y una nueva planificación no reporta ninguna desviación.
 
 ## Requisito de preparación
@@ -72,4 +72,4 @@ Una segunda planificación sobre la configuración sin cambios debe reportar nin
 En CI, la misma garantía se mantiene: reabrir una solicitud de extracción que no modifica `terraform/` produce
 un plan vacío.
 
-Continúe con la [Fase 3 — Conmutación por error](/dns/demo/phase-3-failover/).
+Continúe con la [Fase 3 — Conmutación por error](/dns/es/demo/phase-3-failover/).

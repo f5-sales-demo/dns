@@ -8,13 +8,13 @@ sidebar:
   order: 3
   label: Phase 2 — Validierung
 i18n:
-  sourceHash: 57c1c28019b0
+  sourceHash: 412a08e16df9
   translator: machine
 ---
 
 import { Steps, Aside } from "@astrojs/starlight/components";
 
-Phase 2 bestätigt, dass die Zone aus [Phase 1](/dns/demo/phase-1-build/) aktiv ist: Einträge werden öffentlich aufgelöst,
+Phase 2 bestätigt, dass die Zone aus [Phase 1](/dns/de/demo/phase-1-build/) aktiv ist: Einträge werden öffentlich aufgelöst,
 die F5 XC-Konfiguration stimmt mit der Terraform-Deklaration überein, und eine erneute Planung meldet keine Abweichungen.
 
 ## Bereitschaftsprüfung
@@ -72,4 +72,4 @@ Ein zweiter Plan gegen die unveränderte Konfiguration darf keine Änderungen me
 In CI gilt dieselbe Garantie: Das erneute Öffnen eines Pull Requests, der `terraform/` nicht ändert, erzeugt
 einen leeren Plan.
 
-Weiter zu [Phase 3 — Failover](/dns/demo/phase-3-failover/).
+Weiter zu [Phase 3 — Failover](/dns/de/demo/phase-3-failover/).
