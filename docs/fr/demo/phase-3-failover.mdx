@@ -8,14 +8,14 @@ sidebar:
   order: 4
   label: Phase 3 — Basculement
 i18n:
-  sourceHash: fb9b9857341b
+  sourceHash: 543d3059ca0b
   translator: machine
 ---
 
 import { Aside } from "@astrojs/starlight/components";
 
 La phase 3 ajoute un **basculement avec contrôle d'état** par-dessus la zone créée lors de la
-[Phase 1](/dns/demo/phase-1-build/) : un **équilibreur de charge DNS** F5 XC retourne des réponses différentes pour un
+[Phase 1](/dns/fr/demo/phase-1-build/) : un **équilibreur de charge DNS** F5 XC retourne des réponses différentes pour un
 nom en fonction de l'état du pool, de sorte que le trafic est automatiquement acheminé vers un pool sain.
 
 <Aside type="caution" title="En attente du module dns-lb">
@@ -48,4 +48,4 @@ Une fois le module livré, la démonstration de basculement effectuera les opér
    interroge `dig` jusqu'à ce que la réponse change.
 4. Restaurer le pool principal et confirmer le retour en arrière.
 
-En attendant, passez à la [Phase 4 — Démantèlement](/dns/demo/phase-4-teardown/) pour supprimer la zone de la Phase 1.
+En attendant, passez à la [Phase 4 — Démantèlement](/dns/fr/demo/phase-4-teardown/) pour supprimer la zone de la Phase 1.

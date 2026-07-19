@@ -8,7 +8,7 @@ sidebar:
 
 import { Steps, Aside } from "@astrojs/starlight/components";
 
-Phase 2 confirms the zone from [Phase 1](/dns/demo/phase-1-build/) is live: records resolve publicly,
+Phase 2 confirms the zone from [Phase 1](/dns/en/demo/phase-1-build/) is live: records resolve publicly,
 the F5 XC configuration matches what Terraform declared, and a re-plan reports no drift.
 
 ## Readiness gate
@@ -66,4 +66,4 @@ A second plan against the unchanged configuration must report no changes:
 In CI, the same guarantee holds: reopening a pull request that does not change `terraform/` produces
 an empty plan.
 
-Continue to [Phase 3 — Failover](/dns/demo/phase-3-failover/).
+Continue to [Phase 3 — Failover](/dns/en/demo/phase-3-failover/).

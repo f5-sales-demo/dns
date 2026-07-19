@@ -7,14 +7,14 @@ sidebar:
   order: 4
   label: เฟส 3 — การล้มเหลวสำรอง
 i18n:
-  sourceHash: fb9b9857341b
+  sourceHash: 543d3059ca0b
   translator: machine
 ---
 
 import { Aside } from "@astrojs/starlight/components";
 
 เฟส 3 เพิ่ม **การล้มเหลวสำรองที่ตรวจสอบสุขภาพ** บนโซนจาก
-[เฟส 1](/dns/demo/phase-1-build/): **การกระจายโหลด DNS** ของ F5 XC จะส่งคืนคำตอบที่แตกต่างกันสำหรับ
+[เฟส 1](/dns/th/demo/phase-1-build/): **การกระจายโหลด DNS** ของ F5 XC จะส่งคืนคำตอบที่แตกต่างกันสำหรับ
 ชื่อตามสุขภาพของพูล เพื่อให้ทราฟฟิกย้ายไปยังพูลที่ปกติโดยอัตโนมัติ
 
 <Aside type="caution" title="รอการพัฒนาโมดูล dns-lb">
@@ -44,4 +44,4 @@ import { Aside } from "@astrojs/starlight/components";
    สำรวจ `dig` จนกว่าคำตอบจะเปลี่ยนแปลง
 4. คืนค่าพูลหลักและยืนยันการกลับคืน
 
-จนกว่าจะถึงเวลานั้น ดำเนินการต่อไปยัง [เฟส 4 — การรื้อถอน](/dns/demo/phase-4-teardown/) เพื่อลบโซนจากเฟส 1
+จนกว่าจะถึงเวลานั้น ดำเนินการต่อไปยัง [เฟส 4 — การรื้อถอน](/dns/th/demo/phase-4-teardown/) เพื่อลบโซนจากเฟส 1
