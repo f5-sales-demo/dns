@@ -7,13 +7,13 @@ sidebar:
   order: 3
   label: フェーズ 2 — 検証
 i18n:
-  sourceHash: 57c1c28019b0
+  sourceHash: 412a08e16df9
   translator: machine
 ---
 
 import { Steps, Aside } from "@astrojs/starlight/components";
 
-フェーズ 2 では、[フェーズ 1](/dns/demo/phase-1-build/) で作成したゾーンが稼働中であることを確認します。レコードがパブリックに解決されること、F5 XC の設定が Terraform で宣言した内容と一致していること、および再プランによってドリフトが報告されないことを検証します。
+フェーズ 2 では、[フェーズ 1](/dns/ja/demo/phase-1-build/) で作成したゾーンが稼働中であることを確認します。レコードがパブリックに解決されること、F5 XC の設定が Terraform で宣言した内容と一致していること、および再プランによってドリフトが報告されないことを検証します。
 
 ## 準備完了の確認
 
@@ -66,4 +66,4 @@ done
 
 CI においても同様の保証が適用されます。`terraform/` を変更しないプルリクエストを再度開いた場合、空のプランが生成されます。
 
-[フェーズ 3 — フェイルオーバー](/dns/demo/phase-3-failover/) に進んでください。
+[フェーズ 3 — フェイルオーバー](/dns/ja/demo/phase-3-failover/) に進んでください。

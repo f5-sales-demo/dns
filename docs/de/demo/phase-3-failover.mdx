@@ -8,14 +8,14 @@ sidebar:
   order: 4
   label: Phase 3 — Failover
 i18n:
-  sourceHash: fb9b9857341b
+  sourceHash: 543d3059ca0b
   translator: machine
 ---
 
 import { Aside } from "@astrojs/starlight/components";
 
 Phase 3 fügt **gesundheitsgeprüftes Failover** auf der Zone aus
-[Phase 1](/dns/demo/phase-1-build/) hinzu: Ein F5 XC **DNS-Lastverteiler** gibt je nach Pool-Zustand
+[Phase 1](/dns/de/demo/phase-1-build/) hinzu: Ein F5 XC **DNS-Lastverteiler** gibt je nach Pool-Zustand
 unterschiedliche Antworten für einen Namen zurück, sodass der Datenverkehr automatisch zu einem
 gesunden Pool wechselt.
 
@@ -50,4 +50,4 @@ Sobald das Modul veröffentlicht ist, wird die Failover-Demo Folgendes tun:
 3. Den primären Pool in einen ungesunden Zustand versetzen und bestätigen, dass die Auflösung auf den sekundären Pool failover durchführt — das Bereitschaftsgate fragt `dig` ab, bis sich die Antwort ändert.
 4. Den primären Pool wiederherstellen und das Failback bestätigen.
 
-Fahren Sie bis dahin mit [Phase 4 — Abbau](/dns/demo/phase-4-teardown/) fort, um die Zone aus Phase 1 zu entfernen.
+Fahren Sie bis dahin mit [Phase 4 — Abbau](/dns/de/demo/phase-4-teardown/) fort, um die Zone aus Phase 1 zu entfernen.

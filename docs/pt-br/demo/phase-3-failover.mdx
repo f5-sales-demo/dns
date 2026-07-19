@@ -8,14 +8,14 @@ sidebar:
   order: 4
   label: Fase 3 — Failover
 i18n:
-  sourceHash: fb9b9857341b
+  sourceHash: 543d3059ca0b
   translator: machine
 ---
 
 import { Aside } from "@astrojs/starlight/components";
 
 A Fase 3 adiciona **failover com verificação de integridade** sobre a zona da
-[Fase 1](/dns/demo/phase-1-build/): um **balanceador de carga DNS** do F5 XC retorna respostas diferentes para um
+[Fase 1](/dns/pt-br/demo/phase-1-build/): um **balanceador de carga DNS** do F5 XC retorna respostas diferentes para um
 nome com base na integridade do pool, de modo que o tráfego é direcionado automaticamente para um pool saudável.
 
 <Aside type="caution" title="Pendente do módulo dns-lb">
@@ -48,4 +48,4 @@ Assim que o módulo for disponibilizado, a demonstração de failover irá:
    consulta `dig` até que a resposta mude.
 4. Restaurar o pool primário e confirmar o failback.
 
-Até lá, continue para a [Fase 4 — Teardown](/dns/demo/phase-4-teardown/) para remover a zona da Fase 1.
+Até lá, continue para a [Fase 4 — Teardown](/dns/pt-br/demo/phase-4-teardown/) para remover a zona da Fase 1.

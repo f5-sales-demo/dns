@@ -8,14 +8,14 @@ sidebar:
   order: 4
   label: Fase 3 — Conmutación por error
 i18n:
-  sourceHash: fb9b9857341b
+  sourceHash: 543d3059ca0b
   translator: machine
 ---
 
 import { Aside } from "@astrojs/starlight/components";
 
 La Fase 3 agrega **conmutación por error con verificación de estado** sobre la zona de
-[Fase 1](/dns/demo/phase-1-build/): un **balanceador de carga DNS** de F5 XC devuelve respuestas distintas para un
+[Fase 1](/dns/es/demo/phase-1-build/): un **balanceador de carga DNS** de F5 XC devuelve respuestas distintas para un
 nombre según el estado del pool, de modo que el tráfico se mueve automáticamente hacia un pool saludable.
 
 <Aside type="caution" title="Pendiente del módulo dns-lb">
@@ -48,4 +48,4 @@ Una vez que el módulo esté disponible, la demostración de conmutación por er
    ejecuta `dig` en bucle hasta que la respuesta cambie.
 4. Restaurará el primario y confirmará la reversión.
 
-Hasta entonces, continúe con [Fase 4 — Eliminación](/dns/demo/phase-4-teardown/) para eliminar la zona de la Fase 1.
+Hasta entonces, continúe con [Fase 4 — Eliminación](/dns/es/demo/phase-4-teardown/) para eliminar la zona de la Fase 1.

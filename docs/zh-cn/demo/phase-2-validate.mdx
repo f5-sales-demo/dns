@@ -5,13 +5,13 @@ sidebar:
   order: 3
   label: 第二阶段 — 验证
 i18n:
-  sourceHash: 57c1c28019b0
+  sourceHash: 412a08e16df9
   translator: machine
 ---
 
 import { Steps, Aside } from "@astrojs/starlight/components";
 
-第二阶段确认来自[第一阶段](/dns/demo/phase-1-build/)的区域已上线：记录可公开解析，F5 XC 配置与 Terraform 声明的内容一致，并且重新执行计划时不报告任何偏差。
+第二阶段确认来自[第一阶段](/dns/zh-cn/demo/phase-1-build/)的区域已上线：记录可公开解析，F5 XC 配置与 Terraform 声明的内容一致，并且重新执行计划时不报告任何偏差。
 
 ## 就绪检查
 
@@ -64,4 +64,4 @@ done
 
 在 CI 中，同样的保证成立：重新打开一个未更改 `terraform/` 的 Pull Request 将产生空计划。
 
-继续前往[第三阶段 — 故障切换](/dns/demo/phase-3-failover/)。
+继续前往[第三阶段 — 故障切换](/dns/zh-cn/demo/phase-3-failover/)。

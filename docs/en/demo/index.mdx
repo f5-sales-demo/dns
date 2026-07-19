@@ -16,10 +16,10 @@ phase is idempotent: rerunning it converges to the same state.
 
 | Phase | Goal |
 | --- | --- |
-| [Phase 1 — Build](/dns/demo/phase-1-build/) | Deploy the primary DNS zone with Terraform; wire remote state and CI |
-| [Phase 2 — Validate](/dns/demo/phase-2-validate/) | Confirm the zone resolves on the public internet and the plan is idempotent |
-| [Phase 3 — Failover](/dns/demo/phase-3-failover/) | Add a DNS load balancer with health-checked failover *(pending the DNS-LB module)* |
-| [Phase 4 — Teardown](/dns/demo/phase-4-teardown/) | Destroy the managed objects after explicit confirmation |
+| [Phase 1 — Build](/dns/en/demo/phase-1-build/) | Deploy the primary DNS zone with Terraform; wire remote state and CI |
+| [Phase 2 — Validate](/dns/en/demo/phase-2-validate/) | Confirm the zone resolves on the public internet and the plan is idempotent |
+| [Phase 3 — Failover](/dns/en/demo/phase-3-failover/) | Add a DNS load balancer with health-checked failover *(pending the DNS-LB module)* |
+| [Phase 4 — Teardown](/dns/en/demo/phase-4-teardown/) | Destroy the managed objects after explicit confirmation |
 
 ## Prerequisites
 
@@ -36,4 +36,4 @@ Use a domain you own and intend to manage — the plan is variable-driven precis
 your own.
 </Aside>
 
-Start with [Phase 1 — Build](/dns/demo/phase-1-build/).
+Start with [Phase 1 — Build](/dns/en/demo/phase-1-build/).

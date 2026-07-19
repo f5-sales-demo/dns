@@ -7,13 +7,13 @@ sidebar:
   order: 4
   label: 第三階段 — 容錯移轉
 i18n:
-  sourceHash: fb9b9857341b
+  sourceHash: 543d3059ca0b
   translator: machine
 ---
 
 import { Aside } from "@astrojs/starlight/components";
 
-第三階段在 [第一階段](/dns/demo/phase-1-build/) 的區域基礎上新增**健康檢查容錯移轉**功能：F5 XC **DNS 負載平衡器**會根據資源池的健康狀態，對同一名稱回傳不同的解析結果，使流量自動切換至健康的資源池。
+第三階段在 [第一階段](/dns/zh-tw/demo/phase-1-build/) 的區域基礎上新增**健康檢查容錯移轉**功能：F5 XC **DNS 負載平衡器**會根據資源池的健康狀態，對同一名稱回傳不同的解析結果，使流量自動切換至健康的資源池。
 
 <Aside type="caution" title="待 dns-lb 模組完成">
 此階段目前尚無法執行。它依賴於 `dns-lb` Terraform 模組，該模組是目前計劃的後續工作，目前因 `lb_record` 連線格式尚未確定而處於阻塞狀態。本頁面記錄了預期的設計，以確保整體架構的完整性；可執行的步驟將隨模組一同發布。
@@ -41,4 +41,4 @@ DNS 負載平衡器堆疊由三個 F5 XC 資源加上區域中的一筆記錄組
 3. 使主要資源池進入不健康狀態，確認解析結果容錯移轉至次要資源池 — 就緒閘道會持續輪詢 `dig` 直至解析結果變更。
 4. 還原主要資源池，確認容錯回復正常運作。
 
-在此之前，請繼續前往 [第四階段 — 拆除](/dns/demo/phase-4-teardown/) 以移除第一階段的區域。
+在此之前，請繼續前往 [第四階段 — 拆除](/dns/zh-tw/demo/phase-4-teardown/) 以移除第一階段的區域。

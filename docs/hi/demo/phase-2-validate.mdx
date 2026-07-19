@@ -8,13 +8,13 @@ sidebar:
   order: 3
   label: चरण 2 — सत्यापन
 i18n:
-  sourceHash: 57c1c28019b0
+  sourceHash: 412a08e16df9
   translator: machine
 ---
 
 import { Steps, Aside } from "@astrojs/starlight/components";
 
-चरण 2 यह पुष्टि करता है कि [चरण 1](/dns/demo/phase-1-build/) से बनाया गया ज़ोन लाइव है: रिकॉर्ड सार्वजनिक रूप से रिज़ॉल्व होते हैं,
+चरण 2 यह पुष्टि करता है कि [चरण 1](/dns/hi/demo/phase-1-build/) से बनाया गया ज़ोन लाइव है: रिकॉर्ड सार्वजनिक रूप से रिज़ॉल्व होते हैं,
 F5 XC कॉन्फ़िगरेशन Terraform में घोषित से मेल खाता है, और पुनः-प्लान कोई drift रिपोर्ट नहीं करता।
 
 ## तत्परता जाँच
@@ -70,4 +70,4 @@ done
 
 CI में, यही गारंटी लागू होती है: किसी ऐसे pull request को पुनः खोलना जो `terraform/` नहीं बदलता, एक खाली प्लान उत्पन्न करता है।
 
-[चरण 3 — फ़ेलओवर](/dns/demo/phase-3-failover/) पर जारी रखें।
+[चरण 3 — फ़ेलओवर](/dns/hi/demo/phase-3-failover/) पर जारी रखें।
