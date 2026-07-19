@@ -1,0 +1,23 @@
+name: Code Review
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+jobs:
+  review:
+    # Skip fork PRs (never reach the self-hosted runner) and automated bot
+    # branches so governance/dependabot PRs aren't gated on the laptop runner.
+    if: >-
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      !startsWith(github.head_ref, 'governance/') &&
+      !startsWith(github.head_ref, 'sync/') &&
+      !startsWith(github.head_ref, 'dependabot/') &&
+      !startsWith(github.head_ref, 'release/')
+    uses: f5-sales-demo/code-review/.github/workflows/claude-review.yml@main
+    permissions:
+      contents: read
+      pull-requests: write
+    secrets:
+      F5_GATEWAY_TOKEN: ${{ secrets.F5_GATEWAY_TOKEN }}
+      REPO_SETTINGS_TOKEN: ${{ secrets.REPO_SETTINGS_TOKEN }}
+    with:
+      verify_cmd: "cd terraform && terraform init -backend=false && terraform validate"
