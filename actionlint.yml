@@ -1,0 +1,9 @@
+---
+# Repo-local actionlint config. The Claude reviewer runs on a repo-level
+# self-hosted runner labeled "code-review"; register it so actionlint accepts
+# `runs-on: [self-hosted, macOS, code-review]`.
+self-hosted-runner:
+  labels:
+    - code-review
+
+config-variables: null
