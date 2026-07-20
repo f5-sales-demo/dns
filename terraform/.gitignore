@@ -2,6 +2,11 @@
 .terraform/
 .terraform.lock.hcl
 
+# Override files (e.g. the temporary backend_override.tf that
+# .code-review/verify.sh writes for credential-free validation)
+*_override.tf
+*_override.tf.json
+
 # State (local backend during prototyping — never commit)
 *.tfstate
 *.tfstate.*
