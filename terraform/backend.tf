@@ -15,3 +15,5 @@ terraform {
   # Contributor" role those methods require. Bootstrap: scripts/bootstrap-azure-state.sh.
   backend "azurerm" {}
 }
+
+# UAT WS2 (1784940480): trivial comment; PR is throwaway and will be closed.
