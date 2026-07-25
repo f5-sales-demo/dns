@@ -15,3 +15,5 @@ terraform {
   # Contributor" role those methods require. Bootstrap: scripts/bootstrap-azure-state.sh.
   backend "azurerm" {}
 }
+
+# UAT (1784945009): live check that authenticated verification runs on the runner.
