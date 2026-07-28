@@ -20,7 +20,6 @@
 
 F5 XC DNS management
 
-
 ## Documentation
 
 Full documentation is available at **[https://f5-sales-demo.github.io/dns/](https://f5-sales-demo.github.io/dns/)**.
