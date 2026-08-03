@@ -1,3 +1,5 @@
+# DNS
+
 🌐 English |
 [日本語](https://f5-sales-demo.github.io/dns/ja/) |
 [한국어](https://f5-sales-demo.github.io/dns/ko/) |
@@ -11,8 +13,6 @@
 [العربية](https://f5-sales-demo.github.io/dns/ar/) |
 [हिन्दी](https://f5-sales-demo.github.io/dns/hi/) |
 [ไทย](https://f5-sales-demo.github.io/dns/th/)
-
-# DNS
 
 [![GitHub Pages Deploy](https://github.com/f5-sales-demo/dns/actions/workflows/github-pages-deploy.yml/badge.svg)](https://github.com/f5-sales-demo/dns/actions/workflows/github-pages-deploy.yml)
 [![Repository Settings](https://github.com/f5-sales-demo/dns/actions/workflows/enforce-repo-settings.yml/badge.svg)](https://github.com/f5-sales-demo/dns/actions/workflows/enforce-repo-settings.yml)
