@@ -28,7 +28,7 @@ env:
 jobs:
   terraform:
     name: ${{ github.event_name == 'push' && 'apply' || 'plan' }}
-    runs-on: [self-hosted, Linux, X64, dns]
+    runs-on: [self-hosted, Linux, X64, dns, ubuntu-24.04]
     defaults:
       run:
         working-directory: terraform
