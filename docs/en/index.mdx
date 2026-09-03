@@ -1,11 +1,60 @@
 ---
-title: DNS
-description: DNS management, zones, and load balancing for F5 Distributed Cloud.
-hero:
-  tagline: DNS management, zones, and load balancing.
-  image:
-    html: '<img src="/dns/images/hero.svg" alt="F5 XC DNS" />'
-sidebar:
-  hidden: true
-  order: 0
+title: F5 Distributed Cloud DNS Management
+description: Authoritative Primary and Secondary DNS, Global Server Load Balancing (GSLB), DNSSEC, and failover routing.
 ---
+
+import { Card, CardGrid } from '@astrojs/starlight/components';
+
+**F5 Distributed Cloud DNS** delivers high-performance, resilient, and globally distributed authoritative Domain Name System (DNS) services with built-in DNS load balancing and automated health-based failover.
+
+## Resolution & Routing Architecture
+
+```text
++-------------------------------------------------------------------------+
+|                    Global Anycast DNS Resolution Flow                   |
+|                                                                         |
+|  DNS Client Query (e.g. app.example.com)                                |
+|        |                                                                |
+|        v                                                                |
+|  +-------------------------------------------------------------------+  |
+|  | Globally Distributed Anycast DNS Edge PoPs                         |  |
+|  +---------------------------------+---------------------------------+  |
+|                                    |                                    |
+|                                    v                                    |
+|  +-------------------------------------------------------------------+  |
+|  | Health Check Engine: Continuous Origin Availability Monitoring     |  |
+|  +---------------------------------+---------------------------------+  |
+|                                    |                                    |
+|         +--------------------------+--------------------------+         |
+|         | Primary Healthy                                     | Failed  |
+|         v                                                     v         |
+|  +-----------------------------+               +---------------------+  |
+|  | Return Primary VIP A Record |               | Return Failover VIP |  |
+|  | (192.0.2.10)                |               | (198.51.100.20)     |  |
+|  +-----------------------------+               +---------------------+  |
++-------------------------------------------------------------------------+
+```
+
+## Key Topics
+
+<CardGrid>
+  <Card title="Primary & Secondary DNS" icon="star">
+    Host primary authoritative zones or synchronize zones from existing master servers via AXFR/IXFR.
+  </Card>
+  <Card title="DNS Load Balancing (GSLB)" icon="puzzle">
+    Route users to the nearest or best-performing data center using latency-based or geolocation routing.
+  </Card>
+  <Card title="DNSSEC Signing" icon="seti:lock">
+    Automated one-click DNSSEC cryptographic key management and zone signing.
+  </Card>
+  <Card title="Automated Failover" icon="pulse">
+    Sub-second rerouting around cloud provider outages or degraded application origins.
+  </Card>
+</CardGrid>
+
+## Documentation Roadmap
+
+- **[DNS Architecture](/dns/01-architecture)**: Anycast network topology, query flows, and TTL optimization.
+- **[Deployment Walkthrough](/dns/03-deploy)**: Zone delegation, record creation, and health check attachment.
+- **[Secondary DNS Synchronization](/dns/06-secondary-dns)**: Configuring zone transfers (AXFR) and TSIG key authentication.
+- **[Failover Simulation & Verification](/dns/07-failover)**: Simulating origin failure and observing automated DNS steering.
