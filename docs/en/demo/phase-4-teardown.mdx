@@ -22,10 +22,14 @@ tenant before proceeding — the credentials and inputs in your environment deci
 
 1. Confirm your environment targets the intended tenant and domain:
 
+   <div data-xcsh-context="shell" data-xcsh-fields="XCSH_API_URL">
+
    ```sh
    echo "$XCSH_API_URL"
    grep '^domain' terraform/terraform.tfvars
    ```
+
+   </div>
 
 2. Review what will be destroyed:
 
@@ -46,11 +50,15 @@ tenant before proceeding — the credentials and inputs in your environment deci
 
 Confirm the zone is gone from F5 XC (expect HTTP `404`):
 
+<div data-xcsh-context="shell" data-xcsh-fields="XCSH_API_URL XCSH_API_TOKEN XCSH_DNS_ZONE">
+
 ```bash
 curl -s -o /dev/null -w '%{http_code}\n' \
-  -H "Authorization: APIToken xF5XC_API_TOKENx" \
-  "xF5XC_API_URLx/api/config/dns/namespaces/system/dns_zones/xF5XC_DOMAINx"
+  -H "Authorization: APIToken <XCSH_API_TOKEN>" \
+  "<XCSH_API_URL>/api/config/dns/namespaces/system/dns_zones/<XCSH_DNS_ZONE>"
 ```
+
+</div>
 
 Public resolution stops once the delegated nameservers drop the records.
 

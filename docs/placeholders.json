@@ -1,29 +1,14 @@
 {
+  "version": 2,
+  "fields": ["XCSH_API_URL", "XCSH_API_TOKEN", "XCSH_DNS_ZONE"],
   "groups": [
     {
       "label": "F5 XC Tenant",
-      "keys": ["F5XC_API_URL", "F5XC_API_TOKEN"]
+      "keys": ["XCSH_API_URL", "XCSH_API_TOKEN"]
     },
     {
       "label": "DNS",
-      "keys": ["F5XC_DOMAIN"]
+      "keys": ["XCSH_DNS_ZONE"]
     }
-  ],
-  "fields": {
-    "F5XC_API_URL": {
-      "type": "text",
-      "default": "https://example-tenant.console.ves.volterra.io",
-      "description": "F5 XC Console API URL"
-    },
-    "F5XC_API_TOKEN": {
-      "type": "text",
-      "default": "example-api-token",
-      "description": "F5 XC API credential token"
-    },
-    "F5XC_DOMAIN": {
-      "type": "text",
-      "default": "example.com",
-      "description": "Delegated DNS zone FQDN managed by Terraform"
-    }
-  }
+  ]
 }

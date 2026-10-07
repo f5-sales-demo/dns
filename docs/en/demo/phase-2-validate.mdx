@@ -16,10 +16,12 @@ the F5 XC configuration matches what Terraform declared, and a re-plan reports n
 Query the zone through the F5 XC API and confirm the expected record set exists. Fill the
 placeholders from the form at the top of the page, a `.env` file, or your shell.
 
+<div data-xcsh-context="shell" data-xcsh-fields="XCSH_API_URL XCSH_API_TOKEN XCSH_DNS_ZONE">
+
 ```bash
 curl -s \
-  -H "Authorization: APIToken xF5XC_API_TOKENx" \
-  "xF5XC_API_URLx/api/config/dns/namespaces/system/dns_zones/xF5XC_DOMAINx" \
+  -H "Authorization: APIToken <XCSH_API_TOKEN>" \
+  "<XCSH_API_URL>/api/config/dns/namespaces/system/dns_zones/<XCSH_DNS_ZONE>" \
   | jq '{
     zone: .metadata.name,
     group: .spec.primary.rr_set_group[0].metadata.name,
@@ -28,17 +30,23 @@ curl -s \
   }'
 ```
 
+</div>
+
 A `PASS` with the `demo-records` group and the `www` / `app` / `api` names confirms the F5 XC side.
 
 ## Public resolution
 
 The domain is delegated to F5 XC, so the records resolve on the public internet. Check each name:
 
+<div data-xcsh-context="shell" data-xcsh-fields="XCSH_DNS_ZONE">
+
 ```bash
 for name in www app api; do
-  echo "$name.xF5XC_DOMAINx -> $(dig +short "$name.xF5XC_DOMAINx" A | tr '\n' ' ')"
+  echo "$name.<XCSH_DNS_ZONE> -> $(dig +short "$name.<XCSH_DNS_ZONE>" A | tr '\n' ' ')"
 done
 ```
+
+</div>
 
 <Aside type="note">
 If the default RFC 5737 documentation addresses (`203.0.113.x`) are still in place, resolution
